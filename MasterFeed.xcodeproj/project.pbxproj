@@ -100,6 +100,7 @@
 		3B79FDA8264C9C0E00EA6254 /* AppTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTabView.swift; sourceTree = "<group>"; };
 		3B834254264CA0AA001704D2 /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
 		3B834257264CBCCA001704D2 /* MainFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainFeedView.swift; sourceTree = "<group>"; };
+		3B857D1E268B863700ABF1B6 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		3B8C8541265317D20032AC0D /* HeadlineImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadlineImageView.swift; sourceTree = "<group>"; };
 		3B8C8543265351AF0032AC0D /* FrontHeadlinesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrontHeadlinesView.swift; sourceTree = "<group>"; };
 		3B942F812677ED6C00ACD6F4 /* MasterFeed.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MasterFeed.entitlements; sourceTree = "<group>"; };
@@ -277,6 +278,7 @@
 				3BB5739F264D428200787F11 /* TimeLineResponse.swift */,
 				3BB573A1264D42B800787F11 /* Meta.swift */,
 				3BB573A3264D42D600787F11 /* FollowingsResponse.swift */,
+				3B857D1E268B863700ABF1B6 /* Config.xcconfig */,
 			);
 			path = TwitterServices;
 			sourceTree = "<group>";
@@ -452,6 +454,7 @@
 /* Begin XCBuildConfiguration section */
 		3B650C6026122AF100801185 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3B857D1E268B863700ABF1B6 /* Config.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -513,6 +516,7 @@
 		};
 		3B650C6126122AF100801185 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3B857D1E268B863700ABF1B6 /* Config.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;

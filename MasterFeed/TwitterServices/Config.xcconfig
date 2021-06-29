@@ -1,0 +1,12 @@
+//
+//  Config.xcconfig
+//  MasterFeed
+//
+//  Created by Javier Fuentes on 29-06-21.
+//
+
+// Configuration settings file format documentation can be found at:
+// https://help.apple.com/xcode/#/dev745c5c974
+
+TWITTER_CONSUMER_KEY = Jc9O56znvoUtSFTQLsS4UpbQb
+TWITTER_CONSUMER_SECRET = RyYZ5Qlxw1Yjws43LI0HSDii5w23CL22BHMQT9QsG0yBDPte11

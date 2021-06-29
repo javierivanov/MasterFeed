@@ -9,8 +9,8 @@ import Foundation
 import OAuthSwift
 
 
-let TWITTER_CONSUMER_KEY = "Jc9O56znvoUtSFTQLsS4UpbQb"
-let TWITTER_CONSUMER_SECRET = "RyYZ5Qlxw1Yjws43LI0HSDii5w23CL22BHMQT9QsG0yBDPte11"
+let TWITTER_CONSUMER_KEY = (Bundle.main.infoDictionary?["TWITTER_CONSUMER_KEY"] as? String)!
+let TWITTER_CONSUMER_SECRET = (Bundle.main.infoDictionary?["TWITTER_CONSUMER_SECRET"] as? String)!
 let TWITTER_URL_SCHEME = "twitterclient://"
 
 
