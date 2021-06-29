@@ -2,79 +2,55 @@
 //  ContentView.swift
 //  MasterFeed
 //
-//  Created by Javier Fuentes on 29-03-21.
+//  Created by Javier Fuentes on 10-05-21.
 //
 
 import SwiftUI
-import CoreData
 
 struct ContentView: View {
-    @Environment(\.managedObjectContext) private var viewContext
-
-    @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
-        animation: .default)
-    private var items: FetchedResults<Item>
-
+    
+    @EnvironmentObject var feedModel: FeedModel
+    
     var body: some View {
-        List {
-            ForEach(items) { item in
-                Text("Item at \(item.timestamp!, formatter: itemFormatter)")
-            }
-            .onDelete(perform: deleteItems)
-        }
-        .toolbar {
-            #if os(iOS)
-            EditButton()
-            #endif
 
-            Button(action: addItem) {
-                Label("Add Item", systemImage: "plus")
-            }
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            offsets.map { items[$0] }.forEach(viewContext.delete)
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
+        switch feedModel.state {
+        case .preparing:
+        // checking for user
+            ProgressView("MasterFeed")
+        case .onboarding:
+        // no user
+            OnboardingView()
+        case .fetchingSubscriptions:
+        // fetching subs or feeds
+            ProgressView("Refreshing Subscriptions")
+        case .error:
+            Text("UnexpectedError").font(.title)
+        default:
+            // display feed
+            AppTabView()
+                .onAppear(perform: {
+                    feedModel.fetchSources()
+                })
+                .onReceive(feedModel.refreshTimer, perform: { _ in
+                    // Refresh Content While App State is in foreground.
+                    feedModel.fetchSources()
+                })
+                .blur(radius: feedModel.blockingViewText != nil ? 5.0 : 0)
+                .disabled(feedModel.blockingViewText != nil)
+                .overlay(
+                    Group {
+                        if let blockingViewText = feedModel.blockingViewText {
+                            ProgressView(blockingViewText)
+                        } else {
+                            Color.clear
+                        }
+                    }.animation(.easeInOut))
         }
     }
 }
 
-private let itemFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .short
-    formatter.timeStyle = .medium
-    return formatter
-}()
-
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+        ContentView().environmentObject(FeedModel())
     }
 }
