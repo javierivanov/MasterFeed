@@ -18,6 +18,7 @@ struct MainFeedView: View {
     @Environment(\.colorScheme) var scheme
     @State var isPresentedWebView = false
     @State var url: URL?
+    
     var formatter: DateFormatter {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
@@ -31,23 +32,37 @@ struct MainFeedView: View {
     
     var body: some View {
         
-        CocoaList(feedModel.filterSegments(for: category), rowContent: { segment in
-            ExtractedView(resultGroup: segment.resultGroup, tokens: segment.tokens, url: $url, isPresented: $isPresentedWebView)
-        }).listSeparatorStyle(.none)
+        Group {
+            if feedModel.state == .fetchingFeeds {
+                ProgressView("Refreshing").frame(maxWidth: .infinity, alignment: .center)
+            } else {
+                CocoaList(feedModel.filterSegments(for: category), rowContent: { segment in
+                    ExtractedView(resultGroup: segment.resultGroup, tokens: segment.tokens, url: $url, isPresented: $isPresentedWebView).frame(maxWidth: 700)
+                }).listSeparatorStyle(.none)
+            }
+        }
+
         
-//        ScrollView {
-//            LazyVStack {
-//                ForEach(feedModel.filterSegments(for: category)) { segment in
-////                    SmallCardViewTopic(resultGroup: segment.resultGroup.first!, url: $url, isPresented: $isPresentedWebView)
-//                    ExtractedView(resultGroup: segment.resultGroup, tokens: segment.tokens, url: $url, isPresented: $isPresentedWebView)
-//                }
-//            }
-//        }
         .environment(\.categoryValue, category)
         .navigationTitle(category)
-        .sheet(isPresented: $isPresentedWebView, content: {
-            SafariView(url: $url)
+        .background(Group {
+            if let url = url {
+                NavigationLink(
+                    destination: SafariWebView(url: url, presented: $isPresentedWebView, readerMode: feedModel.defaultEasyReading)
+                        .ignoresSafeArea()
+                        .navigationBarHidden(true),
+                    isActive: $isPresentedWebView,
+                    label: {
+                        EmptyView()
+                    })
+            } else {
+                EmptyView()
+            }
         })
+        
+//        .sheet(isPresented: $isPresentedWebView, content: {
+//            SafariView(url: $url)
+//        })
     }
 }
 
@@ -73,42 +88,66 @@ struct ExtractedView: View {
         VStack {
             
             if resultGroup.count > 1 {
-                HStack {
-                Text(tokens.a.capitalized)
-                    .bold()
-                    .font(.title2)
-                    .padding(3)
-                    .backgroundFill(.accentColor)
-                    .foregroundColor(.systemBackground)
-                    .cornerRadius(5)
-                
-                    Text("+").bold()
-                
-                Text(tokens.b.capitalized)
-                    .bold()
-                    .font(.title2)
-                    .padding(3)
-                    .backgroundFill(.accentColor)
-                    .foregroundColor(.systemBackground)
-                    .cornerRadius(5)
-                
-                }.padding(.top)
-                
-                TopicCardsView(resultGroup: resultGroup, url: $url, isPresented: $isPresented, tokens: tokens).frame(height: 1000)
+                VStack {
+                    HStack {
+                    Text(tokens.a.capitalized)
+                        .bold()
+                        .font(.title2)
+                        .padding(3)
+                        .backgroundFill(.accentColor)
+                        .foregroundColor(.systemBackground)
+                        .cornerRadius(5)
+                    
+                        Text(" and ").bold().italic()
+                    
+                    Text(tokens.b.capitalized)
+                        .bold()
+                        .font(.title2)
+                        .padding(3)
+                        .backgroundFill(.accentColor)
+                        .foregroundColor(.systemBackground)
+                        .cornerRadius(5)
+                    
+                    }.padding(.top)
+                    
+                    TopicCardsView(resultGroup: resultGroup, url: $url, isPresented: $isPresented, tokens: tokens)//.frame(height: 1000)
+                }
+                .padding(.horizontal, UIDevice.current.userInterfaceIdiom == .pad ? 40 : 0)
+                .background(LinearGradient(gradient: Gradient(colors: [.systemBackground, Array<Color>([.blue, .red, .green, .orange]).shuffled().first!.opacity(0.1)]), startPoint: .top, endPoint: .bottom).cornerRadius(UIDevice.current.userInterfaceIdiom == .pad ? 10 : 0))
 
             } else if resultGroup.count == 1 {
+                
+//                NavigationLink(
+//                    destination: SafariWebView(url: ((resultGroup.first!.article as? Tweet)?.url!)!, presented: $selection).ignoresSafeArea().navigationBarHidden(true),
+//                    tag: ((resultGroup.first!.article as? Tweet)?.url!.absoluteString)!,
+//                    selection: $selection,
+//                    label: {
+//                        HorizontalCardView(tweet: resultGroup.first!.article as? Tweet)
+//                    }).contextMenu {ContextMenuView(tweet: resultGroup.first!.article as? Tweet)}
+                
+                Button(action: {
+                    url = (resultGroup.first!.article as? Tweet)?.url
+                    isPresented = true
+                }, label: {
+                    HorizontalCardView(tweet: resultGroup.first!.article as? Tweet)
+                })
+                .contextMenu {ContextMenuView(tweet: resultGroup.first!.article as? Tweet)}
+                .padding(.horizontal, UIDevice.current.userInterfaceIdiom == .pad ? 40 : 0)
+
+                
     //            Button(action: {
     //                isPresented = true
     //                url = (resultGroup.first!.article as! Tweet).url
     //            }, label: {
-                    SmallCardViewTopic(resultGroup: resultGroup.first!, url: $url, isPresented: $isPresented)//.contextMenu(menuItems: {ContextMenusView(tweet: resultGroup.first!.article as! Tweet)})
-                        .frame(height: 300)
+//                    SmallCardViewTopic(resultGroup: resultGroup.first!, url: $url, isPresented: $isPresented)//.contextMenu(menuItems: {ContextMenusView(tweet: resultGroup.first!.article as! Tweet)})
+//                        .frame(height: 300)
     //            })
             }
 //            else {
 //                EmptyView()
 //            }
-        }.background(Rectangle().foregroundColor(.secondarySystemBackground).cornerRadius(10)).padding(10)
+        }
+//        .background(Rectangle().foregroundColor(.secondarySystemBackground).cornerRadius(10)).padding(10)
     }
 }
 

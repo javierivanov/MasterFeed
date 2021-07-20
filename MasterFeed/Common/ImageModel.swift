@@ -11,6 +11,37 @@ import UIKit
 import SwiftUI
 
 
+struct CustomLinearGradient: View {
+    var body: some View {
+        let colors: [Color] = Array([.blue, .red, .orange, .yellow, .green].shuffled().prefix(2))
+        let startPoint: UnitPoint = [.top, .topLeading, .topTrailing].randomElement()!
+        let endPoint: UnitPoint = [.bottom, .bottomLeading, .bottomTrailing].randomElement()!
+        LinearGradient(gradient: Gradient(colors: colors), startPoint: startPoint, endPoint: endPoint)
+    }
+}
+
+struct AsyncImageLinearGradient: View {
+    @StateObject private var loader: ImageLoader
+    private let image: (UIImage) -> Image
+    
+    init(url: URL?, @ViewBuilder image: @escaping (UIImage) -> Image = Image.init(uiImage:)) {
+        self.image = image
+        _loader = StateObject(wrappedValue: ImageLoader(url: url, cache: Environment(\.imageCache).wrappedValue))
+    }
+    
+    var body: some View {
+        Group {
+            if loader.image != nil {
+                image(loader.image!).resizable()
+            } else {
+                CustomLinearGradient()
+            }
+        }
+        .onAppear(perform: loader.load)
+        .onDisappear(perform: loader.cancel)
+    }
+}
+
 struct AsyncImage<Placeholder: View>: View {
     @StateObject private var loader: ImageLoader
     private let placeholder: Placeholder
@@ -121,7 +152,7 @@ class ImageLoader: ObservableObject {
     private var cache: ImageCache?
     private var cancellable: AnyCancellable?
     
-    private static let imageProcessingQueue = DispatchQueue.global(qos: .userInteractive)
+    private static let imageProcessingQueue = DispatchQueue(label: "image-queue", qos: .userInteractive)
     
     init(url: URL?, cache: ImageCache? = nil) {
         self.url = url
@@ -159,8 +190,8 @@ class ImageLoader: ObservableObject {
     func cancel() {
         guard let cancellable = cancellable else { return }
         DispatchQueue
-            .global(qos: .background)
-            .asyncAfter(deadline: .now() + 5, execute: cancellable.cancel)
+            .global(qos: .utility)
+            .asyncAfter(deadline: .now()+2, execute: cancellable.cancel)
     }
     
     private func onStart() {

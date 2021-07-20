@@ -8,16 +8,18 @@
 import SwiftUI
 import CoreData
 import UnsupervisedTextClassifier
+import SwiftUIX
 
 struct TopicCardsView: View {
     
     var resultGroup: [ResultGroup]
-    
+    let div = UIDevice.current.userInterfaceIdiom == .pad ? 3 : 2
     var computedGrid: Int {
-        if (resultGroup.count - 1) % 2 == 0 {
+        let rest = (resultGroup.count - 1) % div
+        if rest == 0 {
             return resultGroup.count
         } else {
-            return resultGroup.count - 1
+            return resultGroup.count - rest
         }
     }
     
@@ -29,17 +31,65 @@ struct TopicCardsView: View {
     @Binding var isPresented: Bool
     
     var tokens: (a: String, b: String)
-    let columns: [GridItem] = Array(repeating: .init(.flexible()), count: 2)
+    let columns: [GridItem] = Array(repeating: .init(.flexible(minimum: 0)), count: UIDevice.current.userInterfaceIdiom == .pad ? 3 : 2)
     var body: some View {
         VStack(alignment: .leading) {
-            LargeCardViewTopic(resultGroup: resultGroup.first!, url: $url, isPresented: $isPresented)
+//            LargeCardViewTopic(resultGroup: resultGroup.first!, url: $url, isPresented: $isPresented)
+            
+            Button(action: {
+                url = (resultGroup.first!.article as? Tweet)?.url
+                isPresented = true
+            }) {
+                LargeCardView(tweet: resultGroup.first!.article as? Tweet)
+            }.contextMenu(ContextMenu(menuItems: {
+                ContextMenuView(tweet: resultGroup.first!.article as? Tweet)
+            }))
+
+//            NavigationLink(
+//                destination: SafariWebView(url: (resultGroup.first!.article as? Tweet)!.url!, presented: $selection).ignoresSafeArea().navigationBarHidden(true),
+//                tag: ((resultGroup.first!.article as? Tweet)?.url!.absoluteString)!,
+//                selection: $selection,
+//                label: {
+//                    LargeCardView(tweet: resultGroup.first!.article as? Tweet)
+//                }).contextMenu(ContextMenu(menuItems: {
+//                    ContextMenuView(tweet: resultGroup.first!.article as? Tweet)
+//                }))
+                        
             LazyVGrid(columns: columns) {
                 ForEach(resultGroup[1..<computedGrid]) { result in
-                    SmallGridViewTopic(resultGroup: result, url: $url, isPresented: $isPresented)
+
+                    Button(action: {
+                        url = (result.article as? Tweet)?.url
+                        isPresented = true
+                    }) {
+                        VerticalCardView(tweet: result.article as? Tweet)
+                    }.contextMenu(ContextMenu(menuItems: {
+                        ContextMenuView(tweet: result.article as? Tweet)
+                    }))
+
+//                    NavigationLink(
+//                        destination: SafariWebView(url: (result.article as? Tweet)!.url!, presented: $selection).ignoresSafeArea().navigationBarHidden(true),
+//                        tag: (resultGroup.first!.article as? Tweet)!.url!.absoluteString,
+//                        selection: $selection,
+//                        label: {
+//                            VerticalCardView(tweet: result.article as? Tweet)
+//                        }).contextMenu(ContextMenu(menuItems: {
+//                            ContextMenuView(tweet: result.article as? Tweet)
+//                        }))
+                    
                 }
             }
-            if (resultGroup.count - 1) % 2 != 0 {
-                SmallCardViewTopic(resultGroup: resultGroup.last!, url: $url, isPresented: $isPresented)
+            if (resultGroup.count - 1) % div != 0 {
+//                SmallCardViewTopic(resultGroup: resultGroup.last!, url: $url, isPresented: $isPresented)
+//                HorizontalCardView(tweet: resultGroup.last!.article as? Tweet)
+                Button(action: {
+                    url = (resultGroup.last!.article as? Tweet)?.url
+                    isPresented = true
+                }) {
+                    HorizontalCardView(tweet: resultGroup.last!.article as? Tweet)
+                }.contextMenu(ContextMenu(menuItems: {
+                    ContextMenuView(tweet: resultGroup.last!.article as? Tweet)
+                }))
             }
         }
         .padding(.vertical)
@@ -132,14 +182,14 @@ struct SmallCardViewTopic: View {
     }
 }
 
-struct SamplePreview: PreviewProvider {
-    static var previews: some View {
-        SmallCardViewTopic(resultGroup: nil, url: .constant(nil), isPresented: .constant(true)).previewLayout(.sizeThatFits)
-        LargeCardViewTopic(resultGroup: nil, url: .constant(nil), isPresented: .constant(true)).previewLayout(.sizeThatFits)
-        SmallGridViewTopic(resultGroup: nil, url: .constant(nil), isPresented: .constant(true)).previewLayout(.sizeThatFits)
-        
-    }
-}
+//struct SamplePreview: PreviewProvider {
+//    static var previews: some View {
+//        SmallCardViewTopic(resultGroup: nil, url: .constant(nil), isPresented: .constant(true)).previewLayout(.sizeThatFits)
+//        LargeCardViewTopic(resultGroup: nil, url: .constant(nil), isPresented: .constant(true)).previewLayout(.sizeThatFits)
+//        SmallGridViewTopic(resultGroup: nil, url: .constant(nil), isPresented: .constant(true)).previewLayout(.sizeThatFits)
+//
+//    }
+//}
 
 
 
@@ -160,7 +210,7 @@ struct HeadlineTextLargeView: View {
             HStack(spacing: spacing) {
                 Text(tweet?.source ?? "CNN").foregroundColor(.blue).bold()
                 Text("•")
-                Text(formatter.localizedString(for: tweet?.created_at ?? Date(), relativeTo: Date())).bold().foregroundColor(.primary.opacity(0.7))
+                Text(formatter.localizedString(for: tweet?.createdAt ?? Date(), relativeTo: Date())).bold().foregroundColor(.primary.opacity(0.7))
                 TopicsListView(tweet: tweet)
                 Spacer()
                 //button
@@ -199,7 +249,7 @@ struct HeadlineTextSmallView: View {
             HStack {
                 VStack(alignment: .leading) {
                     Text(tweet?.source ?? "CNN").foregroundColor(.blue).bold()
-                    Text(formatter.localizedString(for: tweet?.created_at ?? Date(), relativeTo: Date())).bold()
+                    Text(formatter.localizedString(for: tweet?.createdAt ?? Date(), relativeTo: Date())).bold()
                         .foregroundColor(.primary.opacity(0.7))
                 }.font(.caption)
                 Spacer()
@@ -251,60 +301,60 @@ struct BookmarksButtonView: View {
 }
 
 
-
-struct TopicsListView: View {
-    
-    var tweet: Tweet?
-    
-    var body: some View {
-        if let tweet = tweet {
-            ForEach(tweet.categories, id:\.self) { cat in
-                
-                if Environment(\.categoryValue).wrappedValue == cat {
-                    Text(cat)
-                        .bold()
-                        .padding(3)
-                        .backgroundFill(.secondary)
-                        .foregroundColor(.secondarySystemBackground)
-                        .cornerRadius(5)
-                } else {
-                    NavigationLink(destination: MainFeedView(category: cat), label: {
-                        Text(cat)
-                            .bold()
-                            .padding(3)
-                            .backgroundFill(.secondary)
-                            .foregroundColor(.secondarySystemBackground)
-                            .cornerRadius(5)
-                    })
-                }
-                
-            }
-        } else {
-            Text("Sample")
-                .bold()
-                .padding(3)
-                .backgroundFill(.secondary)
-                .foregroundColor(.secondarySystemBackground)
-                .cornerRadius(5)
-        }
-    }
-}
-
-struct TopicCardsView_Previews: PreviewProvider {
-    static var previews: some View {
-        
-        TopicCardsView(resultGroup: [], url: .constant(nil), isPresented: .constant(true), tokens: ("", "")).preferredColorScheme(.light).environmentObject(FeedModel())
-    }
-}
+//
+//struct TopicsListView: View {
+//    
+//    var tweet: Tweet?
+//    
+//    var body: some View {
+//        if let tweet = tweet {
+//            ForEach(tweet.categories, id:\.self) { cat in
+//                
+//                if Environment(\.categoryValue).wrappedValue == cat {
+//                    Text(cat)
+//                        .bold()
+//                        .padding(3)
+//                        .backgroundFill(.secondary)
+//                        .foregroundColor(.secondarySystemBackground)
+//                        .cornerRadius(5)
+//                } else {
+//                    NavigationLink(destination: MainFeedView(category: cat), label: {
+//                        Text(cat)
+//                            .bold()
+//                            .padding(3)
+//                            .backgroundFill(.secondary)
+//                            .foregroundColor(.secondarySystemBackground)
+//                            .cornerRadius(5)
+//                    })
+//                }
+//                
+//            }
+//        } else {
+//            Text("Sample")
+//                .bold()
+//                .padding(3)
+//                .backgroundFill(.secondary)
+//                .foregroundColor(.secondarySystemBackground)
+//                .cornerRadius(5)
+//        }
+//    }
+//}
+//
+//struct TopicCardsView_Previews: PreviewProvider {
+//    static var previews: some View {
+//
+//        TopicCardsView(resultGroup: [], url: .constant(nil), isPresented: .constant(true), tokens: ("", "")).preferredColorScheme(.light).environmentObject(FeedModel())
+//    }
+//}
 
 extension StoredArticle {
     func loadData(tweet: Tweet) {
         url = tweet.url
-        imageURL = tweet.imageSmall
+        imageURL = tweet.image
         text = tweet.text
         source = tweet.source
         id = UUID()
-        timestamp = tweet.created_at
+        timestamp = tweet.createdAt
     }
     
     static func withUrl(_ url: URL, context moc: NSManagedObjectContext) -> StoredArticle? {

@@ -21,22 +21,47 @@ struct OnboardingPageDetails<Content: View>: Identifiable {
 
 let OnboardingPagesViewList: [OnboardingPageDetails<AnyView>] = [
     OnboardingPageDetails<AnyView>(view: {AnyView(PageImagePresentation())}),
+    OnboardingPageDetails<AnyView>(view: {AnyView(PagePrivacy())}),
 ]
 
 struct PageImagePresentation: View {
     
     var body: some View {
         VStack(spacing: 50) {
+            Text("Welcome Aboard").font(.title).bold()
             AnimatedLogosView().padding()
-            Text("MasterFeed is a simple yet powerfull news aggregator from all your favorite sources").font(.title2).padding()
+            Text("MasterFeed is a simple yet powerful news aggregator from all your favorite sources.").font(.title2).padding()
         }.background(Rectangle().foregroundColor(.white.opacity(0.3)).cornerRadius(10))
     }
 }
 
+struct PagePrivacy: View {
+    
+    var body: some View {
+        VStack {
+            
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Privacy in mind.").font(.title).bold()
+                Text("No data stored.").font(.title3)
+                Text("No data shared.").font(.title3)
+            }.padding()
+            
+            Image(systemName: "lock.shield")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 100)
+                .foregroundColor(.blue)
+                .padding()
+            
+            
+        }.background(Rectangle().foregroundColor(.white.opacity(0.3)).cornerRadius(10))
+    }
+}
 
 struct PageImagePresentation_Previews: PreviewProvider {
     static var previews: some View {
-        PageImagePresentation().preferredColorScheme(.dark).colorScheme(.dark)
+        PageImagePresentation().preferredColorScheme(.dark).colorScheme(.dark).previewLayout(.sizeThatFits)
+        PagePrivacy().preferredColorScheme(.dark).colorScheme(.light).previewLayout(.sizeThatFits)
     }
 }
 

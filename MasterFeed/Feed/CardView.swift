@@ -43,8 +43,8 @@ struct TextOverlayDescriptor: View {
             HStack {
                 Text(tweet?.source ?? "@CNN").foregroundColor(.blue).bold()
                 Text("•")
-                Text(formatter.localizedString(for: tweet?.created_at ?? Date(), relativeTo: Date()))
-                Text(tweet?.domains(from: feedModel.categories).joined(separator: ", ") ?? "").fontWeight(.bold)
+                Text(formatter.localizedString(for: tweet?.createdAt ?? Date(), relativeTo: Date()))
+                Text(tweet?.domainsList(from: feedModel.categories).joined(separator: ", ") ?? "").fontWeight(.bold)
             }.font(.caption).lineLimit(1)
             Text(tweet?.text ?? "Sample Text")
                 .font(.headline)

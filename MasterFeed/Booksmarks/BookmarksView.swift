@@ -19,6 +19,7 @@ struct BookmarksView: View {
     
     @State var url: URL?
     @State var isPresented: Bool = false
+    @EnvironmentObject var feedModel: FeedModel
     
     var body: some View {
         List {
@@ -41,9 +42,21 @@ struct BookmarksView: View {
             })
         }
         .navigationTitle("Bookmarks")
-        .sheet(isPresented: $isPresented, content: {
-            SafariView(url: $url)
-        })
+//        .sheet(isPresented: $isPresented, content: {
+//            SafariView(url: $url)
+//        })
+        .background {
+            if let url = url {
+                NavigationLink(
+                    destination: SafariWebView(url: url, presented: $isPresented, readerMode: feedModel.defaultEasyReading).ignoresSafeArea().navigationBarHidden(true),
+                    isActive: $isPresented,
+                    label: {
+                        EmptyView()
+                    })
+            } else {
+                EmptyView()
+            }
+        }
     }
 }
 

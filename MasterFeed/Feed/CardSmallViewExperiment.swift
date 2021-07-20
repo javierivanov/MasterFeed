@@ -20,7 +20,7 @@ struct CardSmallViewExperiment: View {
     
     
     init(tweet: Tweet?) {
-        _loader = StateObject(wrappedValue: ImageLoader(url: tweet?.imageSmall, cache: Environment(\.imageCache).wrappedValue))
+        _loader = StateObject(wrappedValue: ImageLoader(url: tweet?.image, cache: Environment(\.imageCache).wrappedValue))
         self.tweet = tweet
     }
     

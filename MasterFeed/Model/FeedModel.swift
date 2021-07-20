@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import UnsupervisedTextClassifier
+import Network
 
 
 // MARK: - Feed Status
@@ -145,6 +146,13 @@ class FeedModel: ObservableObject {
             return
         }
         
+        // Check keys
+        if (Bundle.main.infoDictionary?["TWITTER_CONSUMER_KEY"] as? String) == nil || (Bundle.main.infoDictionary?["TWITTER_CONSUMER_SECRET"] as? String) == nil {
+            self.error = .version
+            self.state = .error
+            return
+        }
+        
         
         // Quick user setup
         if let user_data = userData {
@@ -152,7 +160,6 @@ class FeedModel: ObservableObject {
         } else {
             setState(.onboarding)
         }
-//        SwURL.setImageCache(type: .inMemory)
     }
     
 }
@@ -222,6 +229,10 @@ extension FeedModel {
         
         DispatchQueue.global(qos: .userInteractive).async { [self] in
             
+            if forceRefresh && state == .error {
+                self.setState(.fetchingSubscriptions)
+            }
+            
             let userSubscriptions = userSubscriptions ?? []
             
             let cond1 = (lastSubscriptionUpdate ?? Date()).distance(to: Date()) > 60*60*3
@@ -243,7 +254,7 @@ extension FeedModel {
             
             DispatchQueue.main.async {
                 if forceRefresh {
-                    //                    self.status = .fetchingSubscriptionsLocally
+                    //self.status = .fetchingSubscriptionsLocally
                     self.blockingViewText = "Refreshing Subscriptions"
                 } else {
                     self.state = .fetchingSubscriptions
@@ -254,13 +265,23 @@ extension FeedModel {
                 .map{ subs in Array(Set(userSubscriptions).union(subs)) }
                 .map { subs in subs.sorted(by: {$0.name < $1.name})}
                 .handleEvents(receiveCompletion: { completion in
-                    guard completion == .finished else { return }
-                    self.lastSubscriptionUpdate = Date()
-                    setState(newState: .done, additionalChanges: {
-                        self.blockingViewText = nil
-                    })
+                    switch completion {
+                    case .failure(let fail):
+                        self.setState(newState: .error, additionalChanges: {
+                            self.error = .unhandledError(msg: fail.localizedDescription)
+                        })
+                    case .finished:
+                        self.lastSubscriptionUpdate = Date()
+                        setState(newState: .done, additionalChanges: {
+                            self.blockingViewText = nil
+                        })
+                    }
+                    
                 })
                 .receive(on: DispatchQueue.main)
+                .catch { _ in
+                    Just<[UserSubscription]>([])
+                }
                 .assign(to: &$subscriptions)
         }
     }
@@ -336,6 +357,9 @@ extension FeedModel {
                     self.setState(.done)
                 }
             })
+            .catch { _ in
+                Just<[SegmentResultGroup]>([])
+            }
             .assign(to: &$segmentResults)
     }
     

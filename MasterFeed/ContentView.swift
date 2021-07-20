@@ -10,21 +10,30 @@ import SwiftUI
 struct ContentView: View {
     
     @EnvironmentObject var feedModel: FeedModel
+//    @StateObject var reachable = Reachability()
     
     var body: some View {
-
+        
         switch feedModel.state {
         case .preparing:
-        // checking for user
-            ProgressView("MasterFeed")
+            // checking for user
+            ProgressView()
         case .onboarding:
-        // no user
+            // no user
             OnboardingView()
         case .fetchingSubscriptions:
-        // fetching subs or feeds
+            // fetching subs or feeds
             ProgressView("Refreshing Subscriptions")
         case .error:
-            Text("UnexpectedError").font(.title)
+            VStack(alignment: .center, spacing: 20) {
+                Text(feedModel.error.localizedDescription).font(.title).padding()
+                Text(feedModel.error.recoverySuggestion ?? "").font(.title3).padding()
+                Button(action: {
+                    feedModel.loadSubscriptions(forceRefresh: true)
+                }, label: {
+                    Text("Retry")
+                })
+            }
         default:
             // display feed
             AppTabView()

@@ -54,7 +54,7 @@ struct SubscriptionsView: View {
             }
         }
         .navigationTitle("Subscriptions")
-        .navigationSearchBarHiddenWhenScrolling(true)
+        .navigationSearchBarHiddenWhenScrolling(false)
         .navigationSearchBar {
             SearchBar("Name", text: $searchText, isEditing: $isEditing) {
                 print(searchText)
@@ -62,7 +62,7 @@ struct SubscriptionsView: View {
             .onCancel {
                 isEditing = false
                 searchText = ""
-            }.showsCancelButton(true)
+            }
         }
  
     }

@@ -24,82 +24,6 @@ fileprivate struct TwitterAPI {
 struct TwitterServices {
     let user: UserAccount
 
-    func fetchSources(_ userid: String = "2750478267") {
-        
-        class SampleSubs: Subscriber {
-
-            
-            
-            func receive(subscription: Subscription) {
-                self.subscription = subscription
-                self.subscription?.request(.unlimited)
-            }
-            
-            func receive(_ input: SegmentResultGroup) -> Subscribers.Demand {
-                
-                
-                print(input.correlation)
-
-                input.resultGroup.forEach{
-                    print($0.similarity, $0.article.text as Any)
-                }
-                
-                
-                
-//                print(input.corrMatrix?.sorted(by: {$0.score > $1.score})[0...10].map {
-//                    ($0.score, (input.keywords[$0.tokens.a], input.keywords[$0.tokens.b]))
-//                } as Any)
-//
-//                input.groupResults.forEach {
-//                    print(Set($0.map(\.article).compactMap(\.keywords).reduce([], +)))
-//                    $0.forEach({
-//                        print($0.similarity, $0.article.text as Any)
-//                    })
-//                    print("-----")
-//                }
-//
-//
-                return .unlimited
-            }
-            
-            func receive(completion: Subscribers.Completion<Never>) {
-                print("done :D \(completion)")
-            }
-            
-            typealias Input = SegmentResultGroup
-            typealias Failure = Never
-            var subscription: Subscription?
-            
-            
-        }
-        
-        let sampleSub = SampleSubs()
-        
-        Just(Array(Set(["2097571","428333","9300262","807095", "1367531", "9300262", "16343974", "1652541", "3108351","14511951", "6433472", "4970411","487118986","7587032", "16973333"])))
-            .flatMap { (ids: [String]) -> AnyPublisher<Tweet, Never> in
-                let tasks = ids.map { (id: String) -> AnyPublisher<Tweet, Never> in
-                    let request = user.client.makeRequest(URL(string: "https://api.twitter.com/2/users/\(id)/tweets?tweet.fields=entities")!, method: .GET)
-                    let urlRequest = try? request?.makeRequest()
-                    return URLSession.shared.dataTaskPublisher(for: urlRequest!)
-                        .map { (data, response) -> Data in return data }
-                        .decode(type: TimeLineResponse.self, decoder: JSONDecoder())
-                        .catch {error -> Just<TimeLineResponse> in
-                            Just(TimeLineResponse(data: Array<Tweet>(), meta: nil))
-                        }
-                        .map {$0.data} //.map {(timeline: TimeLineResponse) -> [Tweet] in timeline.data }
-                        .map(Tweet.addSourceToTweets(id: id))
-                        .map(Tweet.extractKeywords)
-                        .flatMap(\.publisher)
-                        .eraseToAnyPublisher()
-                }
-                return Publishers.MergeMany(tasks).eraseToAnyPublisher()
-            }
-            .collect()
-            .map(Cluster.init(articles:))
-            .flatMap(\.publisher)
-            .receive(subscriber: sampleSub)
-
-    }
 }
 
 // MARK: - Twitter Services API
@@ -107,26 +31,28 @@ struct TwitterServices {
 extension TwitterServices {
     
     // MARK: Subscriptions Publisher
-    var subscriptionsPublisher: AnyPublisher<[UserSubscription], Never> {
+    var subscriptionsPublisher: AnyPublisher<[UserSubscription], Error> {
         
         let request = user.client.makeRequest(TwitterAPI(user_id: user.user_id).followingUser, method: .GET)
-        guard let urlRequest = try? request?.makeRequest() else { return Just([]).eraseToAnyPublisher() }
+        guard let urlRequest = try? request?.makeRequest() else { return Fail(error: FeedError.unhandledError(msg: "Failed to make request")).eraseToAnyPublisher() }
         
         return URLSession.shared.dataTaskPublisher(for: urlRequest)
-            .map { (data, response) -> Data in return data }
+//            .map { (data, response) -> Data in
+//                print(String(data: data, encoding: .utf8))
+//                return data }
+            .map(\.data)
             .decode(type: FollowingsResponse.self, decoder: JSONDecoder())
-            .catch { _ in Just(FollowingsResponse(data: Array<TwitterUser>(), meta: nil)) }
+            //.catch { _ in Just(FollowingsResponse(data: Array<TwitterUser>(), meta: nil)) }
             .map(\.data)
             .map(twitterUsersTransform(twitterUsers:))
             .eraseToAnyPublisher()
     }
     
     // MARK: Feed Publisher
-    func feedPublisher(subscriptions: [UserSubscription]) -> AnyPublisher<SegmentResultGroup, Never> {
+    func feedPublisher(subscriptions: [UserSubscription]) -> AnyPublisher<SegmentResultGroup, Error> {
         Just(Dictionary(uniqueKeysWithValues: zip(subscriptions.map(\.id), subscriptions)))
             .flatMap(requestSourcesPublisher(ids:))
-            
-            .map(Cluster.init(articles:))
+            .map { articles in Cluster(articles: articles, maxSimilarity: 0.6) }
             .flatMap(\.publisher)
             .eraseToAnyPublisher()
     }
@@ -142,23 +68,24 @@ extension TwitterServices {
         }
     }
     
-    private func requestSourcesPublisher(ids: [String: UserSubscription]) -> AnyPublisher<[Tweet], Never> {
-//        print("ids.values.filter({$0.active}).count: \(ids.values.filter({$0.active}).count)")
-        let tasks = ids.filter {$0.value.active}.keys.map { (id: String) -> AnyPublisher<Tweet, Never> in
+    private func requestSourcesPublisher(ids: [String: UserSubscription]) -> AnyPublisher<[Tweet], Error> {
+        let tasks = ids.filter {$0.value.active}.keys.map { (id: String) -> AnyPublisher<Tweet, Error> in
             let request = user.client.makeRequest(URL(string: TwitterAPI(id: id).tweets)!, method: .GET)
             let urlRequest = try? request?.makeRequest()
+            print("Request: \(id)")
             return URLSession.shared.dataTaskPublisher(for: urlRequest!)
-                .retry(2)
-                .map { (data, response) -> Data in return data }
+                .retry(3)
+                .map(\.data)
                 .decode(type: TimeLineResponse.self, decoder: JSONDecoder())
-                .catch { error  -> Just<TimeLineResponse> in
-                    print("error \(error)")
-                    return Just(TimeLineResponse(data: Array<Tweet>(), meta: nil))
-                }
+//                .catch { error  -> Just<TimeLineResponse> in
+//                    print("error: \(error)")
+//                    return Just(TimeLineResponse(data: Array<Tweet>(), meta: nil))
+//                }
                 .map(\.data) //.map { (timeline: TimeLineResponse) -> [Tweet] in timeline.data }
                 .map(Tweet.filterNil(tweets:))
                 .map(Tweet.addSourceToTweets(id: ids[id]?.name ?? id))
                 .map(Tweet.removeHighOccurrences(tweets:)) //avoid repeated suffixes and prefixes like: "Headline | CBS News"
+                .map(Tweet.removeOldOcurrences(tweets:))
                 .map(Tweet.extractKeywords(articles:))
                 .flatMap(\.publisher)
                 .eraseToAnyPublisher()

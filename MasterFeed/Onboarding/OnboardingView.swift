@@ -16,7 +16,7 @@ struct OnboardingView: View {
     
     var body: some View {
         VStack {
-            Text("Welcome Aboard")
+            Text("MasterFeed")
                 .fontWeight(.heavy)
                 .font(.title)
             
@@ -38,6 +38,7 @@ struct OnboardingView: View {
         .onOpenURL(perform: { url in
             OAuthSwift.handle(url: url)
         })
+        .padding()
         .background(OnboardingBackgroundView())
         .sheet(isPresented: $userAuthentication.displayLogin, content: {
             TwitterLoginView(url: $userAuthentication.authUrl)

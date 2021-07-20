@@ -9,8 +9,8 @@ import Foundation
 import OAuthSwift
 
 
-let TWITTER_CONSUMER_KEY = (Bundle.main.infoDictionary?["TWITTER_CONSUMER_KEY"] as? String)!
-let TWITTER_CONSUMER_SECRET = (Bundle.main.infoDictionary?["TWITTER_CONSUMER_SECRET"] as? String)!
+let TWITTER_CONSUMER_KEY = (Bundle.main.infoDictionary?["TWITTER_CONSUMER_KEY"] as? String) ?? ""
+let TWITTER_CONSUMER_SECRET = (Bundle.main.infoDictionary?["TWITTER_CONSUMER_SECRET"] as? String) ?? ""
 let TWITTER_URL_SCHEME = "twitterclient://"
 
 
@@ -173,7 +173,7 @@ extension UserAuthorization {
         else {
             throw KeychainError.unexpectedPasswordData
         }
-        
+        print("\(token):\(secret)")
         return UserAccount.Credentials(token: token, secret: secret)
         
     }

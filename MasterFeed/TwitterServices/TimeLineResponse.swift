@@ -18,32 +18,32 @@ struct TimeLineResponse : Codable {
 
 
 struct Tweet: Codable, Article, Identifiable {
-    
+
     struct PublicMetrics: Codable {
         var retweet_count: Int
         var reply_count: Int
         var like_count: Int
         var quote_count: Int
-                
+
     }
 
-    
+
     var id: String
     var text: String?
     var url: URL?
     var keywords: [String]?
-    var imageLarge: URL?
+    var image: URL?
     var imageSmall: URL?
     var source: String?
     var textsMap: [[String]]?
-    var urlTitle: String?
+    var urlText: String?
     var tweetText: String?
-    var created_at: Date?
+    var createdAt: Date?
     var metrics: PublicMetrics?
     var context_annotations: [TweetContextAnnotations]?
     var filterKeywords: Set<String>? = []
     var categories: [String] = []
-    
+
     enum TweetCodeKeys: String, CodingKey {
         case id
         case text
@@ -52,52 +52,52 @@ struct Tweet: Codable, Article, Identifiable {
         case context_annotations
         case public_metrics
     }
-    
-    
+
+
     init(from decoder: Decoder) throws {
-        
+
         let values = try decoder.container(keyedBy: TweetCodeKeys.self)
-        
+
         id = try values.decode(String.self, forKey: .id)
         var textInner = try values.decode(String.self, forKey: .text)
-        
+
         let entities = try? values.decode(TweetEntities.self, forKey: .entities)
-        
+
         entities?.urls?.filter {$0.url != nil}.filter {textInner.contains($0.url!)}.forEach { url in
             textInner = NSString(string: textInner).replacingOccurrences(of: url.url!, with: "")
             if let images = url.images?.sorted(by: {$0.width < $1.width}), images.count > 1{
                 self.imageSmall = images.first != nil ? URL(string: images.first!.url) : nil
-                self.imageLarge = images.last != nil ? URL(string: images.last!.url) : nil
+                self.image = images.last != nil ? URL(string: images.last!.url) : nil
             }
 
-            if let status = url.status, status == 200 {
+//            if let status = url.status, status == 200 {
                 self.url = URL(string: url.unwound_url ?? url.url!)
-                self.urlTitle = url.title
-            }
+                self.urlText = url.title
+//            }
         }
-        
+
         keywords = entities?.annotations?.map({$0.normalized_text})
         keywords?.forEach {filterKeywords?.insert($0)}
-        
+
         tweetText = textInner.trimmingCharacters(in: [" "])
-        urlTitle = urlTitle?.trimmingCharacters(in: [" "])
-        
-        
-        if let urlTitle = urlTitle, urlTitle.isEmpty || urlTitle.split(separator: " ").count <= 3 {
-            self.urlTitle = nil
+        urlText = urlText?.trimmingCharacters(in: [" "])
+
+
+        if let urlTitle = urlText, urlTitle.isEmpty || urlTitle.split(separator: " ").count <= 3 {
+            self.urlText = nil
         }
-        
-        text = urlTitle ?? tweetText
-        
+
+        text = urlText ?? tweetText
+
         if let text = text, text.isEmpty || text.split(separator: " ").count <= 3 {
             self.text = nil
         }
-        
-        created_at = dateFormatter.date(from: try values.decode(String.self, forKey: .created_at).replacingOccurrences(of: ".", with: "+"))
-        
+
+        createdAt = dateFormatter.date(from: try values.decode(String.self, forKey: .created_at).replacingOccurrences(of: ".", with: "+"))
+
         metrics = try values.decode(PublicMetrics.self, forKey: .public_metrics)
         context_annotations = try? values.decode([TweetContextAnnotations].self, forKey: .context_annotations)
-        
+
         let mapping: [String: String] = [
             "travel": "Travel",
             "watch": "Video",
@@ -132,19 +132,19 @@ struct Tweet: Codable, Article, Identifiable {
             "music": "Entertainment",
             "books": "Entertainment"
         ]
-        
+
         let hostMapping: [String: String] = [
             "twitter.com": "Twitter",
             "youtube.com": "YouTube",
             "youtu.be": "YouTube"
         ]
-        
+
         categories.append(contentsOf: url?.pathComponents.filter({$0 != "/"}).filter { part in mapping.keys.contains(part.lowercased())}.map({mapping[$0, default: "Latest"]}) ?? [])
         categories.append(contentsOf: hostMapping.keys.filter { url?.host?.contains($0) ?? false }.compactMap({hostMapping[$0]}))
-        
+
     }
-    
-    
+
+
 }
 
 
@@ -159,20 +159,20 @@ struct TweetContextAnnotations: Codable {
         var name: String?
         var description: String?
     }
-    
+
     var domain: Domain?
     var entity: Entity?
-    
+
 }
 
 struct TweetEntities: Codable {
-    
+
     struct Image: Codable {
         var url: String
         var width: Int
         var height: Int
     }
-    
+
     struct URL: Codable {
         var start: Int
         var end: Int
@@ -200,13 +200,20 @@ struct TweetEntities: Codable {
 
 
 extension Tweet {
+
+    static func removeOldOcurrences(tweets: [Tweet]) -> [Tweet] {
+        tweets.filter { tweet in
+            tweet.createdAt?.distance(to: Date()) ?? 0 < 60*60*24*7
+        }
+    }
+
     static func removeHighOccurrences(tweets: [Tweet]) -> [Tweet] {
         var tweets = tweets
         struct InnerPos: Hashable, Equatable {
             var str: Substring
             var pos: Int
         }
-        
+
         let prefixes = tweets
             .compactMap(\.text)
             .flatMap({$0.split(separator: " ").enumerated()})
@@ -219,12 +226,12 @@ extension Tweet {
             .reduce(into: [:], {counter, piece in
                 counter[InnerPos(str: piece.element, pos: piece.offset), default: 0] += 1
             })
-        
+
         let notNilCounter = tweets.filter {$0.text != nil}.count
-        
+
         let filteredPrefixes = prefixes.filter { Double($0.value) >= Double(notNilCounter)*0.9 }
         let filteredSuffixes = suffixes.filter { Double($0.value) >= Double(notNilCounter)*0.9 }
-        
+
         if filteredPrefixes.count > 0 {
             tweets = tweets.filter { $0.text != nil}.map { tweet in
                 var tweet = tweet
@@ -253,7 +260,7 @@ extension Tweet {
         }
         return tweets
     }
-    
+
     static func addSourceToTweets(id: String) -> ([Tweet]) -> [Tweet] {
         func mapping(tweets: [Tweet]) -> [Tweet] {
             tweets.map { tweet -> Tweet in
@@ -275,15 +282,15 @@ extension Tweet {
 }
 
 extension Tweet {
-    
-    func domains(from categories: Categories) -> [String] {
+
+    func domainsList(from categories: Categories) -> [String] {
         Set(context_annotations?.compactMap { annotation -> String? in
             let token = annotation.domain?.id ?? "0"
             return categories.categories[token]
         } ?? []).sorted()
     }
-    
-    func entities() -> [String] {
+
+    func entitiesList() -> [String] {
         Set(context_annotations?.compactMap { annotation -> String? in
             if source?.contains(annotation.entity?.name ?? "") ?? false {
                 return nil
@@ -291,6 +298,5 @@ extension Tweet {
             return annotation.entity?.name
         } ?? []).sorted()
     }
-    
-    
+
 }

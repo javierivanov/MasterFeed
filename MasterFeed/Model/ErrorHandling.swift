@@ -12,6 +12,22 @@ enum FeedError: Error {
     case timeoutResponse
     case noNetwork
     case unhandledError(msg: String)
+    case version
+}
+
+extension FeedError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .version:
+            return NSLocalizedString("This version is not supported. Please Update The App In The AppStore.", comment: "Version error")
+        case .noNetwork:
+            return NSLocalizedString("", comment: "")
+        case .unhandledError(let msg):
+            return NSLocalizedString("\(msg)", comment: "")
+        case .timeoutResponse:
+            return NSLocalizedString("", comment: "")
+        }
+    }
 }
 
 enum UserError: Error {

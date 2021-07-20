@@ -31,11 +31,11 @@ struct AccountView: View {
                 
                 Section {
                     Toggle("EasyReading", isOn: $feedModel.defaultEasyReading)
-                    Picker("Default Category", selection: $feedModel.defaultCategory)  {
-                        ForEach(feedModel.categoryList.indices, id:\.self) { idx in
-                            Text(feedModel.categoryList[idx]).tag(feedModel.categoryList[idx])
-                        }
-                    }
+//                    Picker("Default Category", selection: $feedModel.defaultCategory)  {
+//                        ForEach(feedModel.categoryList.indices, id:\.self) { idx in
+//                            Text(feedModel.categoryList[idx]).tag(feedModel.categoryList[idx])
+//                        }
+//                    }
                     
                     NavigationLink(
                         destination: SubscriptionsView(),

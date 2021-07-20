@@ -13,7 +13,7 @@ struct CardExperminentView: View {
     var tweet: Tweet?
     
     init(tweet: Tweet?) {
-        _loader = StateObject(wrappedValue: ImageLoader(url: tweet?.imageLarge, cache: Environment(\.imageCache).wrappedValue))
+        _loader = StateObject(wrappedValue: ImageLoader(url: tweet?.image, cache: Environment(\.imageCache).wrappedValue))
         self.tweet = tweet
     }
     
@@ -90,8 +90,8 @@ struct TextOverlayExperiment: View {
                 HStack {
                     Text(tweet?.source ?? "@CNN").foregroundColor(.blue).bold()
                     Text("•").bold()
-                    Text(formatter.localizedString(for: tweet?.created_at ?? Date(), relativeTo: Date()))
-                    Text(tweet?.domains(from: feedModel.categories).joined(separator: ", ") ?? "").fontWeight(.bold)
+                    Text(formatter.localizedString(for: tweet?.createdAt ?? Date(), relativeTo: Date()))
+                    Text(tweet?.domainsList(from: feedModel.categories).joined(separator: ", ") ?? "").fontWeight(.bold)
                 }
                 .font(.caption)
                 .lineLimit(1)
