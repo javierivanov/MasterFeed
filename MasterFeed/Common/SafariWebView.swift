@@ -13,21 +13,28 @@ struct SafariWebView: UIViewControllerRepresentable {
     var url: URL
     class SFDelegate: NSObject, SFSafariViewControllerDelegate {
         
-        @Binding var presented: Bool
+        @Binding var presented: String?
         
-        init(presented ispresented: Binding<Bool>) {
-            _presented = ispresented
+        init(presented: Binding<String?>) {
+            _presented = presented
         }
+        
         
         func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
-            presented.toggle()
+            presented = nil
         }
+        
+        deinit {
+            print("dead")
+        }
+        
+
     }
     
     let delegalte: SFDelegate
     let readerMode: Bool
     
-    init(url: URL, presented: Binding<Bool>, readerMode: Bool) {
+    init(url: URL, presented: Binding<String?>, readerMode: Bool) {
         self.readerMode = readerMode
         self.delegalte = SFDelegate(presented: presented)
         self.url = url
@@ -40,7 +47,7 @@ struct SafariWebView: UIViewControllerRepresentable {
         conf.barCollapsingEnabled = true
         conf.entersReaderIfAvailable = self.readerMode
         let sfview = SFSafariViewController(url: url, configuration: conf)
-        sfview.dismissButtonStyle = .done
+        sfview.dismissButtonStyle = .close
         sfview.delegate = self.delegalte
         return sfview
     }

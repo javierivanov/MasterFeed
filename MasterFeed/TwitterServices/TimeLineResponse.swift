@@ -281,6 +281,34 @@ extension Tweet {
     }
 }
 
+
+import NaturalLanguage
+
+extension Tweet {
+    func extractSubjects() -> [String]? {
+        guard let text = text else {return nil}
+        
+        let tagger = NLTagger(tagSchemes: [.nameType])
+
+        tagger.string = text
+
+        let options: NLTagger.Options = [.omitPunctuation, .omitWhitespace, .joinNames]
+        let tags: [NLTag] = [.personalName, .placeName, .organizationName]
+        var results: [String] = []
+        tagger.enumerateTags(in: text.startIndex..<text.endIndex, unit: .word, scheme: .nameType, options: options) { tag, tokenRange in
+            if let tag = tag, tags.contains(tag) {
+                let (hypotheses, _) = tagger.tagHypotheses(at: tokenRange.lowerBound, unit: .word, scheme: .nameType, maximumCount: 1)
+                if hypotheses.sorted(by: {$0.value > $1.value}).first?.value ?? 0 > 0.8 {
+                    results.append(String(text[tokenRange]))
+                }
+            }
+           return true
+        }
+        
+        return results
+    }
+}
+
 extension Tweet {
 
     func domainsList(from categories: Categories) -> [String] {

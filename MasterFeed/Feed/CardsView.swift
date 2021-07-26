@@ -6,27 +6,44 @@
 //
 
 import SwiftUI
+import BetterSafariView
 
 struct HorizontalCardView: View {
     
     var tweet: Tweet?
+    @State var present: Bool = false
+    @EnvironmentObject var feedModel: FeedModel
     
     var body: some View {
-        HStack(alignment: .center, spacing: 0) {
-            AsyncImageLinearGradient(url: tweet?.image)
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 150, height: 150)
-                .clipped()
-                .shadow(radius: 10)
-            HorizontalHeadlineTextView(tweet: tweet)
-                .padding()
-                .frame(maxWidth: .infinity, maxHeight: 150)
-        }
-        .clipped()
-        .background(CustomLinearGradient().overlay(Color.systemBackground.opacity(0.8)))
-        .cornerRadius(10)
-        .padding()
-        .shadow(radius: 10)
+
+        Button {
+            present.toggle()
+        } label: {
+            HStack(alignment: .center, spacing: 0) {
+                AsyncImageLinearGradient(url: tweet?.image)
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 150, height: 150)
+                    .clipped()
+                    .shadow(radius: 10)
+                HorizontalHeadlineTextView(tweet: tweet)
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: 150)
+            }
+            .clipped()
+            .background(CustomLinearGradient().overlay(Color.systemBackground.opacity(0.8)))
+            .cornerRadius(10)
+            .padding()
+            .shadow(radius: 10)
+        }.safariView(isPresented: $present, content: {
+            SafariView(
+                url: (tweet?.url)!,
+                configuration: SafariView.Configuration(
+                    entersReaderIfAvailable: feedModel.defaultEasyReading,
+                    barCollapsingEnabled: true
+                )
+            )
+            .dismissButtonStyle(.done)
+        })
     }
 }
 
@@ -37,21 +54,37 @@ struct VerticalCardView: View {
     var width: CGFloat = 170
     var height: CGFloat = 220
     
+    @State var present: Bool = false
+    @EnvironmentObject var feedModel: FeedModel
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            AsyncImageLinearGradient(url: tweet?.image)
-                .aspectRatio(contentMode: .fill)
-                .frame(width: width, height: 150).clipped()
-                .shadow(radius: 10)
-            HorizontalHeadlineTextView(tweet: tweet)
-                .padding().frame(height: height)
-        }
-        .clipped()
-        .background(CustomLinearGradient().overlay(Color.systemBackground.opacity(0.8)))
-        .cornerRadius(10)
-        .frame(width: width, height: 150 + height)
-        .padding()
-        .shadow(radius: 10)
+        Button {
+            present.toggle()
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                AsyncImageLinearGradient(url: tweet?.image)
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: width, height: 150).clipped()
+                    .shadow(radius: 10)
+                HorizontalHeadlineTextView(tweet: tweet)
+                    .padding().frame(height: height)
+            }
+            .clipped()
+            .background(CustomLinearGradient().overlay(Color.systemBackground.opacity(0.8)))
+            .cornerRadius(10)
+            .frame(width: width, height: 150 + height)
+            .padding()
+            .shadow(radius: 10)
+        }.safariView(isPresented: $present, content: {
+            SafariView(
+                url: (tweet?.url)!,
+                configuration: SafariView.Configuration(
+                    entersReaderIfAvailable: feedModel.defaultEasyReading,
+                    barCollapsingEnabled: true
+                )
+            )
+            .dismissButtonStyle(.done)
+        })
     }
 }
 
@@ -59,26 +92,43 @@ struct VerticalCardView: View {
 struct LargeCardView: View {
     
     var tweet: Tweet?
+    @State var present: Bool = false
+    @EnvironmentObject var feedModel: FeedModel
+    
     
     var body: some View {
         
-        VStack(alignment: .center, spacing: 0) {
-            GeometryReader { geo in
-                AsyncImageLinearGradient(url: tweet?.image)
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: geo.size.width, height: 300, alignment: .top)
-                    .clipped()
-                    .shadow(radius: 10)
+        Button {
+            present.toggle()
+        } label: {
+            VStack(alignment: .center, spacing: 0) {
+                GeometryReader { geo in
+                    AsyncImageLinearGradient(url: tweet?.image)
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geo.size.width, height: 300, alignment: .top)
+                        .clipped()
+                        .shadow(radius: 10)
+                }
+                HorizontalHeadlineTextView(tweet: tweet, largeFont: true)
+                    .padding().frame(height: 150)
+                    
             }
-            HorizontalHeadlineTextView(tweet: tweet, largeFont: true)
-                .padding().frame(height: 150)
-                
-        }
-        .background(CustomLinearGradient().overlay(Color.systemBackground.opacity(0.8)))
-        .frame(height: 450)
-        .cornerRadius(10)
-        .padding()
-        .shadow(radius: 10)
+            .background(CustomLinearGradient().overlay(Color.systemBackground.opacity(0.8)))
+            .frame(height: 450)
+            .cornerRadius(10)
+            .padding()
+            .shadow(radius: 10)
+        }.safariView(isPresented: $present, content: {
+            SafariView(
+                url: (tweet?.url)!,
+                configuration: SafariView.Configuration(
+                    entersReaderIfAvailable: feedModel.defaultEasyReading,
+                    barCollapsingEnabled: true
+                )
+            )
+            .dismissButtonStyle(.done)
+        })
+
     }
 }
 

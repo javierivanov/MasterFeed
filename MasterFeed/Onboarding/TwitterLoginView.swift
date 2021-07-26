@@ -46,16 +46,16 @@ final class CustomSafariViewController: UIViewController {
     }
 }
 
-struct SafariView: UIViewControllerRepresentable {
+struct SafariTwitterView: UIViewControllerRepresentable {
     typealias UIViewControllerType = CustomSafariViewController
     @Binding var url: URL?
-    func makeUIViewController(context: UIViewControllerRepresentableContext<SafariView>) -> CustomSafariViewController {
+    func makeUIViewController(context: UIViewControllerRepresentableContext<SafariTwitterView>) -> CustomSafariViewController {
         let safariController = CustomSafariViewController()
         return safariController
     }
     
     func updateUIViewController(_ safariViewController: CustomSafariViewController,
-                                context: UIViewControllerRepresentableContext<SafariView>) {
+                                context: UIViewControllerRepresentableContext<SafariTwitterView>) {
         safariViewController.url = url // updates our VC's underlying properties
     }
     
@@ -68,7 +68,7 @@ struct TwitterLoginView: View {
 
     var body: some View {
         if url != nil {
-            SafariView(url: $url)
+            SafariTwitterView(url: $url)
         } else {
             ProgressView()
         }

@@ -56,6 +56,10 @@ class FeedModel: ObservableObject {
         }
     }
     
+    var cluster: Cluster?
+    
+    var coverage: [Array<CorrelationResult>.Index: Coverage] = [:]
+    
     @Published var defaultEasyReading: Bool = true {
         willSet {
             userEasyReading = newValue
@@ -322,35 +326,15 @@ extension FeedModel {
         guard (lastFeedUpdate ?? Date()).distance(to: Date()) >= 15*60 || segmentResults.isEmpty else { return }
         
         self.setState(.fetchingFeeds)
-        
+
         TwitterServices(user: user).feedPublisher(subscriptions: subscriptions)
             .collect()
             .receive(on: DispatchQueue.main)
-            //            .handleEvents(receiveOutput: {collection in
-            //                collection.forEach {
-            //                    print()
-            //                    print("------- \($0.correlation.score) -------")
-            //                    print("\($0.correlation.tokens): \($0.tokens)")
-            //                    $0.resultGroup.forEach {
-            //                        let t = $0.article as! Tweet
-            //                        print("***** \(t.source) ****")
-            //                        print("$0.similarity: \($0.similarity)")
-            //                        print("t.text: \(t.text)")
-            //                        print("urlTitle: \(t.urlTitle)")
-            //                        print("innertext: \(t.tweetText)")
-            //                        print("t.keywords: \(t.keywords)")
-            //                        print("entitites: \(t.context_annotations?.map(\.entity).compactMap(\.?.name).joined(separator: ", "))")
-            //                        print("domains: \(t.context_annotations?.map(\.domain).compactMap(\.?.name).joined(separator: ", "))")
-            //                        print("originals: \(t.filterKeywords)")
-            //                        print("*********")
-            //                    }
-            //                }
-            //            }, receiveCompletion: {_ in self.state = .done})
             .handleEvents(receiveCompletion: { completion in
                 switch completion {
-                case .failure(let fail):
+                case .failure(let error):
                     self.setState(newState: .error, additionalChanges: {
-                        self.error = .unhandledError(msg: fail.localizedDescription)
+                        self.error = .unhandledError(msg: error.localizedDescription)
                     })
                 case .finished:
                     self.lastFeedUpdate = Date()
@@ -363,13 +347,6 @@ extension FeedModel {
             .assign(to: &$segmentResults)
     }
     
-    func getTopKTweets(k: Int) -> [Tweet] {
-        let k = min(segmentResults.count, k)
-        return segmentResults[0..<k]
-            .map(\.resultGroup)
-            .compactMap(\.first)
-            .map(\.article) as! [Tweet]
-    }
 }
 
 // MARK: - Categories
@@ -414,6 +391,21 @@ extension FeedModel {
     }
     
     
+}
+
+
+// MARK: - Coverage -
+extension FeedModel {
+    
+    func computeCoverage(index: Array<CorrelationResult>.Index) {
+        guard let cluster = cluster else { return }
+        var coverage = self.coverage[index, default: Coverage()].$sortedArticles
+        cluster.tokenSimilarities(tokenIndex: index)
+            .collect()
+            .map { resultGroup -> [Tweet] in resultGroup.map {$0.article as! Tweet} }
+            .receive(on: DispatchQueue.main)
+            .assign(to: &coverage)
+    }
 }
 
 

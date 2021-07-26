@@ -17,7 +17,7 @@ struct CategoriesView: View {
             LazyVGrid(columns: columns) {
                 ForEach(feedModel.currentCategories(), id:\.self) { cat in
                     NavigationLink(
-                        destination: MainFeedView(category: cat),
+                        destination: MainFeedView(/*category: cat*/),
                         label: {
                             CategoryView(text: cat/*, img: (feedModel.filterSegments(for: cat).first?.resultGroup.first?.article as? Tweet)?.imageLarge*/).padding()
                         })

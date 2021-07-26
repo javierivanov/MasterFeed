@@ -45,18 +45,18 @@ struct BookmarksView: View {
 //        .sheet(isPresented: $isPresented, content: {
 //            SafariView(url: $url)
 //        })
-        .background {
-            if let url = url {
-                NavigationLink(
-                    destination: SafariWebView(url: url, presented: $isPresented, readerMode: feedModel.defaultEasyReading).ignoresSafeArea().navigationBarHidden(true),
-                    isActive: $isPresented,
-                    label: {
-                        EmptyView()
-                    })
-            } else {
-                EmptyView()
-            }
-        }
+//        .background {
+//            if let url = url {
+//                NavigationLink(
+//                    destination: SafariWebView(url: url, presented: $isPresented, readerMode: feedModel.defaultEasyReading).ignoresSafeArea().navigationBarHidden(true),
+//                    isActive: $isPresented,
+//                    label: {
+//                        EmptyView()
+//                    })
+//            } else {
+//                EmptyView()
+//            }
+//        }
     }
 }
 
