@@ -7,6 +7,7 @@
 
 import SwiftUI
 import CoreData
+import BetterSafariView
 
 struct BookmarksView: View {
     
@@ -18,18 +19,28 @@ struct BookmarksView: View {
     ) var articles: FetchedResults<StoredArticle>
     
     @State var url: URL?
-    @State var isPresented: Bool = false
+    @State var presented: Bool = false
     @EnvironmentObject var feedModel: FeedModel
     
     var body: some View {
         List {
             ForEach(articles){ article in
                 Button (action: {
-                    isPresented = true
-                    url = article.url
+                    presented = true
                 }, label: {
-                        SampleView(article: article)
+                    BookmarkInlineView(article: article, imgSize: CGSize(width: 120, height: 120))
+                }).safariView(isPresented: $presented, content: {
+                    let tweet = article.tweet
+                    return SafariView(
+                        url: (tweet.url)!,
+                        configuration: SafariView.Configuration(
+                            entersReaderIfAvailable: feedModel.defaultEasyReading,
+                            barCollapsingEnabled: true
+                        )
+                    )
+                    .dismissButtonStyle(.done)
                 })
+                .padding(.horizontal, UIDevice.current.userInterfaceIdiom == .pad ? 150 : 0)
             }.onDelete(perform: { indexSet in
                 for index in indexSet {
                     moc.delete(articles[index])
@@ -37,26 +48,48 @@ struct BookmarksView: View {
                 do {
                     try moc.save()
                 } catch {
-                    print("Somethin bad here")
+                    print("Unknown error")
                 }
             })
         }
         .navigationTitle("Bookmarks")
-//        .sheet(isPresented: $isPresented, content: {
-//            SafariView(url: $url)
-//        })
-//        .background {
-//            if let url = url {
-//                NavigationLink(
-//                    destination: SafariWebView(url: url, presented: $isPresented, readerMode: feedModel.defaultEasyReading).ignoresSafeArea().navigationBarHidden(true),
-//                    isActive: $isPresented,
-//                    label: {
-//                        EmptyView()
-//                    })
-//            } else {
-//                EmptyView()
-//            }
-//        }
+    }
+}
+
+
+struct BookmarkInlineView: View {
+    
+    var article: StoredArticle
+    var imgSize: CGSize
+    @State var unredact: Bool = false
+    @State var title: String = "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy"
+    @State var uiImage: UIImage?
+    var metadataProvider: CustomLPMetadataProvider = CustomLPMetadataProvider()
+    
+    var body: some View {
+        let tweet = article.tweet
+        HStack(alignment: .center) {
+            
+            Group {
+                if let uiImage = uiImage {
+                    Image(uiImage: uiImage).resizable().aspectRatio(contentMode: .fill)
+                } else {
+                    AsyncImage<AnyView>(url: tweet.image, frameSize: imgSize)
+                }
+            }.frame(imgSize).cornerRadius(10)
+            
+            VStack(alignment: .leading) {
+                Text(tweet.source ?? "").foregroundColor(.blue).bold()
+                Text(formatter.localizedString(fromTimeInterval: Date().distance(to: (tweet.createdAt ?? Date())))).font(.caption)
+                if !unredact && tweet.urlText == nil {
+                    Text(tweet.urlText == nil ? title : tweet.text ?? "").font(.subheadline).lineLimit(2).redacted(reason: .placeholder)
+                } else {
+                    Text(tweet.urlText == nil ? title : tweet.text ?? "").font(.subheadline).lineLimit(5)
+                }
+            }.padding(.leading)
+        }.onAppear {
+            loadTweetRemoteContent(tweet, metadataProvider: metadataProvider, unredact: $unredact, title: $title, uiImage: $uiImage)
+        }
     }
 }
 

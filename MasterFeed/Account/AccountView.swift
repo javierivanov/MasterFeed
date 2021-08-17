@@ -37,11 +37,11 @@ struct AccountView: View {
 //                        }
 //                    }
                     
-                    NavigationLink(
-                        destination: SubscriptionsView(),
-                        label: {
-                            Text("Subscriptions")
-                        })
+//                    NavigationLink(
+//                        destination: SubscriptionsView(),
+//                        label: {
+//                            Text("Subscriptions")
+//                        })
                     //                    NavigationLink(
                     //                        destination: Text("Destination"),
                     //                        label:{

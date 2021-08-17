@@ -84,7 +84,7 @@ struct TextOverlay: View {
                 Text(tweet?.source ?? "@CNN").foregroundColor(.blue).bold()
                 Text("•")
                 Text(formatter.localizedString(for: tweet?.createdAt ?? Date(), relativeTo: Date()))
-                Text(tweet?.domainsList(from: feedModel.categories).joined(separator: ", ") ?? "").fontWeight(.bold)
+                //Text(tweet?.domainsList(from: feedModel.categories).joined(separator: ", ") ?? "").fontWeight(.bold)
             }.font(.caption).lineLimit(1)
             
             Text(tweet?.entitiesList().joined(separator: ", ") ?? "sample line").lineLimit(1)//.bold().foregroundColor(.blue)

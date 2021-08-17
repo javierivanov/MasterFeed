@@ -11,11 +11,10 @@ struct AppTabView: View {
     @State var selectedTab: Tabs = .main
     
     
-    
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationView {
-                MainFeedView()
+                MainFeedView().navigationBarHidden(true)
             }.navigationViewStyle(StackNavigationViewStyle()) // Use .stack in io15
             .tabItem { Label("News", systemImage: "newspaper.fill")
                 .accessibility(label: Text("News")) }
@@ -41,7 +40,11 @@ struct AppTabView: View {
             .tabItem { Label("Account", systemImage: "person.fill")
                 .accessibility(label: Text("Account"))  }
             .tag(Tabs.account)
-        }
+        }.onPreferenceChange(SelectedTabPreferenceKey.self, perform: { value in
+            if let value = value {
+                selectedTab = value
+            }
+        })
     }
 }
 
@@ -54,7 +57,10 @@ struct AppTabView_Previews: PreviewProvider {
 
 // MARK: - Main Views
 extension AppTabView {
-    enum Tabs: CaseIterable {
+    enum Tabs: String, CaseIterable, Equatable, Identifiable {
+        var id: String {
+            self.rawValue
+        }
         case main
         case categories
         case bookmarks
@@ -62,5 +68,14 @@ extension AppTabView {
     }
 }
 
+
+
+struct SelectedTabPreferenceKey: PreferenceKey {
+    static var defaultValue: AppTabView.Tabs?
+
+    static func reduce(value: inout AppTabView.Tabs?, nextValue: () -> AppTabView.Tabs?) {
+        value = nextValue()
+    }
+}
 
 

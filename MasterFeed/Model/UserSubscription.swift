@@ -14,6 +14,8 @@ struct UserSubscription: Identifiable, Codable, Hashable {
     var pic_url: String
     var id: String
     var active: Bool = true
+    var category: String
+    var inMemory:Bool = false
     
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)

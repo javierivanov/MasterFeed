@@ -8,62 +8,80 @@
 import SwiftUI
 
 struct CategoriesView: View {
-    var columns: [GridItem] =
-        Array(repeating: .init(.flexible(minimum: 100)), count: 2)
     @EnvironmentObject var feedModel: FeedModel
+    @State var presentAdd: Bool = false
+    
+    var body: some View {
+        List {
+            ForEach(FeedModel.categoryList, id:\.self) { category in
+                SectionSubcriptionView(section: category)
+            }
+        }
+        
+        .navigationBarItems(trailing:
+                                Button(action: {
+                                    presentAdd = true
+                                }, label: {
+                                    Text(Image(systemName: "plus"))
+                                })
+        )
+        .navigationBarTitle("Categories", displayMode: .large)
+        .listStyle(InsetGroupedListStyle())
+        .sheet(isPresented: $presentAdd, content: {
+            SourceAddView(userSearch: SearchSources(user: feedModel.user!))
+                .environmentObject(feedModel)
+        })
+    }
+}
+
+
+struct SectionSubcriptionView: View {
+    
+    var section: String
+    @EnvironmentObject var feedModel: FeedModel
+    
     var body: some View {
         
-        ScrollView {
-            LazyVGrid(columns: columns) {
-                ForEach(feedModel.currentCategories(), id:\.self) { cat in
+        let subscriptions = feedModel.subscriptions.filter {$0.category == section}
+        let accounts = Set(subscriptions.map(\.username))
+        let filteredAccounts = feedModel.categoriesMapping[section, default:[]].filter({!accounts.contains($0)})
+        
+        if subscriptions.isEmpty && filteredAccounts.isEmpty {
+            EmptyView()
+        } else {
+            Section(header: section) {
+                ForEach(subscriptions) { subscription in
                     NavigationLink(
-                        destination: MainFeedView(/*category: cat*/),
+                        destination: SubscriptionSettingsView(subscription: subscription),
                         label: {
-                            CategoryView(text: cat/*, img: (feedModel.filterSegments(for: cat).first?.resultGroup.first?.article as? Tweet)?.imageLarge*/).padding()
+                            SubscriptionLabelView(subscription: subscription)
                         })
                 }
-            }.font(.title3)
-        }.navigationTitle("Categories")
-        .navigationSearchBarHiddenWhenScrolling(true)
-    }
-}
-
-struct CategoryView: View {
-    
-    var text: String?
-//    var img: URL?
-    
-    var colors: [Color] = [.blue, .red, .orange, .yellow, .green, .purple, .gray]
-    
-    var startPoint: [UnitPoint] = [.top, .topLeading, .topTrailing]
-    var endPoint: [UnitPoint] = [.bottom, .bottomLeading, .bottomTrailing]
-    
-    var body: some View {
-        VStack {
-//            HStack {
-//                Image(systemName: img ?? "tray.fill")
-//                    .font(.title2)
-//                Spacer()
-//            }.padding([.horizontal, .bottom])
-            HStack {
-                Text(text ?? "Category")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                Spacer()
-            }.padding([.horizontal])
+                
+                if !filteredAccounts.isEmpty && feedModel.recommendedSources[section, default: []].isEmpty {
+                    Button(action: {
+                        feedModel.loadUserLookup(filteredAccounts, category: section)
+                    }, label: {
+                        Text("See Recomendations")
+                    })
+                } else if !filteredAccounts.isEmpty {
+                    ForEach(feedModel.recommendedSources[section, default:[]]) { subs in
+                        NonSubscriptionLabelView(subscription: subs)
+                    }
+                }
+            }
+            .animation(.easeInOut)
         }
-        .foregroundColor(.primary)
-        .frame(width: UIScreen.main.bounds.width/2-30, height: 100)
-        .background(
-            LinearGradient(gradient: Gradient(colors: Array(colors.shuffled().prefix(2))), startPoint: startPoint.randomElement()!, endPoint: endPoint.randomElement()!).opacity(0.3))
-//        .background(AsyncImage(url: img, placeholder: {Color.clear}).aspectRatio(contentMode: .fill).blur(radius: 5, opaque: true))
-        .cornerRadius(10)
     }
 }
 
-struct CategoriesView_Previews: PreviewProvider {
-    static var previews: some View {
-        CategoriesView().environmentObject(FeedModel()).preferredColorScheme(.dark)
-    }
-}
+
+//
+//struct CategoriesView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        NavigationView {
+//            CategoriesView()
+//        }.environmentObject(FeedModel.sampleSubs()).preferredColorScheme(.dark)
+//    }
+//}
 

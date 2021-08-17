@@ -17,7 +17,7 @@ struct OnboardingTabsView: View {
             ForEach(OnboardingPagesViewList.indices, id: \.self) { index in
                 OnboardingPagesViewList[index].view.padding()
             }
-        }.tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
+        }.tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
         
     }
 }
