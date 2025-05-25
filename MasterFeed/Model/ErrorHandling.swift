@@ -21,11 +21,13 @@ extension FeedError: LocalizedError {
         case .version:
             return NSLocalizedString("This version is not supported. Please Update The App In The AppStore.", comment: "Version error")
         case .noNetwork:
-            return NSLocalizedString("", comment: "")
+            // MODIFIED HERE
+            return NSLocalizedString("No Internet Connection", comment: "No network error_message")
         case .unhandledError(let msg):
-            return NSLocalizedString("\(msg)", comment: "")
+            return NSLocalizedString("\(msg)", comment: "") // This typically should also have a unique key if localizing
         case .timeoutResponse:
-            return NSLocalizedString("", comment: "")
+            // MODIFIED HERE
+            return NSLocalizedString("The request timed out. Please try again.", comment: "Timeout error message")
         }
     }
 }

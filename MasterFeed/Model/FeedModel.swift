@@ -42,11 +42,13 @@ class FeedModel: ObservableObject {
     
     @Published var user: UserAccount?
     @Published var subscriptions: [UserSubscription] = [] {
-        willSet { // Consider if this heavy operation needs to be off main thread
-            // If `newValue` is large, encoding can be slow.
-            // For simplicity, keeping it as is, but for optimization, consider:
-            // Task.detached { self.userSubscriptions = newValue }
-            self.userSubscriptions = newValue
+        willSet {
+            let valueToSave = newValue // Capture value for the detached task
+            Task.detached(priority: .background) {
+                // This calls the 'set' accessor of the 'userSubscriptions' computed property,
+                // which handles encoding and saving to UserDefaults on this background thread.
+                self.userSubscriptions = valueToSave
+            }
         }
     }
     
@@ -101,7 +103,8 @@ class FeedModel: ObservableObject {
             return try? PropertyListDecoder().decode([UserSubscription].self, from: data)
         }
         set {
-            if let data = try? PropertyListEncoder().encode(newValue) {
+            // This 'set' block is now called from the Task.detached in subscriptions.willSet
+            if let data = try? PropertyListEncoder().encode(newValue) { // newValue is [UserSubscription]?
                 defaults.set(data, forKey: UserKeys.user_subscription.rawValue)
             }
         }
@@ -184,7 +187,7 @@ extension FeedModel {
             // UI updates back on MainActor
             self.blockingViewText = nil
             self.state = .onboarding
-            self.subscriptions = []
+            self.subscriptions = [] // This will trigger the updated willSet
             for index in self.segmentResultsCategoryIndex.indices {
                 self.segmentResultsCategoryIndex[index] = []
             }
@@ -213,11 +216,14 @@ extension FeedModel {
             self.state = .fetchingSubscriptions
         }
         
-        let currentSubs = self.userSubscriptions ?? []
+        let currentSubs = self.userSubscriptions ?? [] // Reads from UserDefaults (potentially slow)
+        // Consider if 'currentSubs' should be read async if it's a bottleneck,
+        // but for willSet, the focus is on the write.
+        
         let needsUpdate = (self.lastSubscriptionUpdate ?? .distantPast).distance(to: Date()) > 60*60*3
         
         guard needsUpdate || currentSubs.isEmpty || forceRefresh else {
-            self.subscriptions = currentSubs // Ensure UI reflects stored subs
+            self.subscriptions = currentSubs // This will trigger willSet, saving what was just read if different
             self.state = .done
             return
         }
@@ -241,7 +247,7 @@ extension FeedModel {
             combinedSubs = combinedSubs.map(transformUserSubscriptionWithCategory)
             combinedSubs.sort(by: {$0.name < $1.name})
             
-            self.subscriptions = combinedSubs
+            self.subscriptions = combinedSubs // This triggers the updated willSet
             self.lastSubscriptionUpdate = Date()
             self.blockingViewText = nil
             self.state = .done
@@ -260,20 +266,19 @@ extension FeedModel {
 // MARK: - FeedModel API Feed (Async)
 extension FeedModel {
     func fetchSourcesAsync(sortResults: Bool = true) async throws {
-        guard !subscriptions.isEmpty,
-              let currentUser = user else { // state_ check removed, let it try if conditions met
+        guard !subscriptions.isEmpty, // subscriptions read is from @Published property (MainActor)
+              let currentUser = user else { 
             print("Fetch sources condition not met: subs empty or no user.")
-            if subscriptions.isEmpty { self.state = .done } // Avoid getting stuck in fetching if no subs
+            if subscriptions.isEmpty { self.state = .done } 
             return
         }
         
-        // Refresh if last update was too long ago OR if there's no content.
         let significantlyOutdated = (lastFeedUpdate ?? .distantPast).distance(to: Date()) >= Self.refreshTime
         let noContentDisplayed = segmentResultsCategoryIndex.allSatisfy({ $0.isEmpty })
 
         guard significantlyOutdated || noContentDisplayed else {
             print("Fetch sources skipped, too recent or data exists and is recent.")
-            self.state = .done // Ensure state is correct if skipped
+            self.state = .done 
             return
         }
         
@@ -288,7 +293,6 @@ extension FeedModel {
             self.lastFeedUpdate = Date()
             
             if sortResults {
-                // Clear previous results before sorting new ones
                 self.segmentResultsCategoryIndex = Array(repeating: [], count: Self.categoryList.count)
                 Self.categoryList.forEach { category in
                     self.sortFeeds(category: category)
@@ -302,10 +306,6 @@ extension FeedModel {
         }
     }
     
-    // sortFeeds is called by fetchSourcesAsync. It processes data and updates @Published properties.
-    // Since FeedModel is @MainActor, these updates are safe.
-    // If publisherV2 involves heavy computation, it should be offloaded.
-    // For now, assuming publisherV2 is efficient or primarily for structuring data.
     func sortFeeds(category: String) {
         guard let clusters = self.clusters, let cluster = clusters[category] else {
             return
@@ -313,33 +313,24 @@ extension FeedModel {
         
         self.visibleCategories.insert(category)
         
-        // This Combine pipeline processes data. If it's CPU intensive, ensure it's on a background thread.
-        // The .receive(on: DispatchQueue.main) ensures final updates are on the main thread.
-        // Since the class is @MainActor, direct property assignments in .sink are fine.
-        let cancellable = Just(cluster) // Publisher on current thread
-            .receive(on: DispatchQueue.global(qos: .userInteractive)) // Offload heavy processing
-            .flatMap(\.publisherV2) // Assumed to be data transformation
+        let cancellable = Just(cluster) 
+            .receive(on: DispatchQueue.global(qos: .userInteractive)) 
+            .flatMap(\.publisherV2) 
             .collect()
-            .receive(on: RunLoop.main) // Switch to main thread for @Published updates
+            .receive(on: RunLoop.main) 
             .sink(receiveValue: { [weak self] segmentResult in
                 guard let self = self else { return }
                 let segmentsFiltered = segmentResult.sorted { a, b in a.resultGroup.count > b.resultGroup.count }
-                let maxSize = min(segmentResult.count, 6) // Ensure maxSize doesn't exceed bounds
+                let maxSize = min(segmentResult.count, 6) 
                 if maxSize > 0, let categoryIndex = Self.categoryListIndex[category] {
                     if self.segmentResultsCategoryIndex.indices.contains(categoryIndex) {
-                        // Ensure not to append if already populated by another call, or clear before fetch
                         self.segmentResultsCategoryIndex[categoryIndex].append(contentsOf: segmentsFiltered[0..<maxSize])
                     }
                 }
                 self.visibleCategories.remove(category)
                 self.currentVisibleCategory = category
             })
-        // Keep the cancellable if you need to manage the lifecycle of this Combine pipeline
-        // For instance, store it in a Set<AnyCancellable> and cancel it on deinit or when a new sort starts.
-        // For simplicity here, it's not stored, meaning it cancels automatically on completion or error.
-        // If sortFeeds can be called multiple times rapidly for the same category, consider managing these cancellables.
-        // For this refactor, we'll assume it's managed or completes quickly.
-         _ = cancellable // To silence unused variable warning, if not storing it.
+         _ = cancellable 
     }
 }
 
@@ -373,7 +364,6 @@ extension FeedModel {
     }
     
     func loadUserLookupAsync(_ usernames: [String], category: String) async {
-        // Ensure user is available
         guard let currentUser = self.user else { return }
 
         await withTaskGroup(of: UserSubscription?.self) { group in
@@ -390,7 +380,6 @@ extension FeedModel {
             
             for await result in group {
                 if let validSubscription = result {
-                    // This is already on MainActor due to FeedModel being @MainActor
                     self.recommendedSources[category, default: []].append(validSubscription)
                 }
             }
@@ -406,7 +395,7 @@ extension FeedModel {
             UserSubscription(username: "sample_User", name: "Sample User", pic_url: "", id: "1234", active: true, category: "Politics"),
             UserSubscription(username: "sample_User2", name: "Sample User2", pic_url: "", id: "1235", active: false, category: "Politics")
         ]
-        feedModel.subscriptions = sampleSubs
+        feedModel.subscriptions = sampleSubs // This will trigger the updated willSet
         return feedModel
     }
     

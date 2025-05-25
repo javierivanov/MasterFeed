@@ -21,47 +21,98 @@ struct ContentView: View {
         case .fetchingSubscriptions:
             ProgressView("Refreshing Subscriptions")
         case .error:
+            // MODIFIED HERE: Enhanced error display
             VStack(alignment: .center, spacing: 20) {
-                Text(feedModel.error.localizedDescription).font(.title).padding()
-                Text(feedModel.error.recoverySuggestion ?? "").font(.title3).padding()
-                Button(action: {
-                    Task {
-                        // Retry loading subscriptions if in error state
-                        await feedModel.loadSubscriptionsAsync(forceRefresh: true)
-                        // Optionally, try to fetch sources again if subscriptions load successfully
-                        // This depends on the desired app logic post-retry.
-                        // if feedModel.state == .done {
-                        //    try? await feedModel.fetchSourcesAsync()
-                        // }
-                    }
-                }, label: {
-                    Text("Retry")
-                })
+                switch feedModel.error {
+                case .noNetwork:
+                    Image(systemName: "wifi.slash")
+                        .font(.system(size: 50))
+                        .foregroundColor(.orange)
+                    Text("No Internet Connection")
+                        .font(.title2)
+                        .multilineTextAlignment(.center)
+                    Text("Please check your connection and try again.")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    retryButton
+                    
+                case .timeoutResponse:
+                    Image(systemName: "timer")
+                        .font(.system(size: 50))
+                        .foregroundColor(.orange)
+                    Text("Request Timed Out")
+                        .font(.title2)
+                        .multilineTextAlignment(.center)
+                    // Using localizedDescription for more detail, or a custom suggestion.
+                    Text(feedModel.error.localizedDescription ?? "Please try again.")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    retryButton
+                    
+                case .version:
+                    Image(systemName: "exclamationmark.arrow.triangle.2.circlepath")
+                        .font(.system(size: 50))
+                        .foregroundColor(.red)
+                    Text(feedModel.error.localizedDescription ?? "App version not supported.")
+                        .font(.title2)
+                        .multilineTextAlignment(.center)
+                    Text("Please update the app from the App Store.")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    // No Retry button for version error
+                    
+                case .unhandledError(let msg):
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 50))
+                        .foregroundColor(.red)
+                    Text("An unexpected error occurred.")
+                        .font(.title2)
+                        .multilineTextAlignment(.center)
+                    Text(msg) // Display the specific error message
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    retryButton
+                    
+                // It's good practice to have a default for enums,
+                // though FeedError is non-frozen, so compiler might not warn if all cases are covered.
+                // Using @unknown default for future-proofing if FeedError adds cases.
+                @unknown default:
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 50))
+                        .foregroundColor(.red)
+                    Text("An error occurred.")
+                        .font(.title2)
+                        .multilineTextAlignment(.center)
+                    Text(feedModel.error.localizedDescription ?? "Please try again later.")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    retryButton
+                }
             }
+            .padding() // Add some padding around the VStack for better spacing from screen edges
+
         default: // .done, .fetchingFeeds (Spinner is handled by blockingViewText)
             AppTabView()
                 .onAppear(perform: {
-                    // Initial fetch of sources when the view appears
-                    // This should ideally only run if sources haven't been fetched recently
-                    // or if subscriptions are present.
-                    // fetchSourcesAsync now has guards for this.
                     Task {
                         do {
                             try await feedModel.fetchSourcesAsync()
                         } catch {
-                            // Handle or log error from onAppear fetch
                             print("Error fetching sources on appear: \(error)")
                         }
                     }
                 })
                 .onReceive(feedModel.refreshTimer, perform: { _ in
-                    // Refresh Content While App State is in foreground based on timer
                     print("Refresh timer triggered, fetching sources.")
                     Task {
                         do {
                             try await feedModel.fetchSourcesAsync()
                         } catch {
-                            // Handle or log error from timer refresh
                             print("Error fetching sources on timer refresh: \(error)")
                         }
                     }
@@ -76,21 +127,59 @@ struct ContentView: View {
                                 .background(Color.secondary.opacity(0.3))
                                 .cornerRadius(10)
                         } else {
-                            // EmptyView() is more appropriate than Color.clear for no overlay
                             EmptyView()
                         }
                     }
-                    // Consider .animation(.easeInOut, value: feedModel.blockingViewText) for smoother transitions
                     .animation(.easeInOut, value: feedModel.blockingViewText != nil) 
                 )
         }
     }
+    
+    // Extracted retry button for reuse
+    private var retryButton: some View {
+        Button(action: {
+            Task {
+                await feedModel.loadSubscriptionsAsync(forceRefresh: true)
+                // Optionally, attempt to fetch sources if subscriptions succeed
+                // if feedModel.state == .done || feedModel.state == .fetchingFeeds { // Or a more specific success check
+                //    try? await feedModel.fetchSourcesAsync()
+                // }
+            }
+        }, label: {
+            Text("Retry")
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(8)
+        })
+    }
 }
 
 struct ContentView_Previews: PreviewProvider {
+    static func errorPreview(error: FeedError) -> some View {
+        let model = FeedModel(nosetup: true)
+        model.state = .error
+        model.error = error
+        return ContentView().environmentObject(model)
+    }
+    
     static var previews: some View {
-        // Ensure the preview FeedModel is also @MainActor if it does async work directly in init
-        // For previews, often a nosetup FeedModel is fine.
-        ContentView().environmentObject(FeedModel(nosetup: true)) // Using nosetup for preview
+        Group {
+            ContentView().environmentObject(FeedModel(nosetup: true))
+                .previewDisplayName("Default State")
+            
+            errorPreview(error: .noNetwork)
+                .previewDisplayName("No Network Error")
+            
+            errorPreview(error: .timeoutResponse)
+                .previewDisplayName("Timeout Error")
+            
+            errorPreview(error: .version)
+                .previewDisplayName("Version Error")
+            
+            errorPreview(error: .unhandledError(msg: "A detailed unhandled error message goes here."))
+                .previewDisplayName("Unhandled Error")
+        }
     }
 }
