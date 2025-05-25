@@ -13,79 +13,93 @@ import BackgroundTasks
 struct MasterFeedApp: App {
     let persistenceController = PersistenceController.shared
     @Environment(\.scenePhase) private var scenePhase
-    @StateObject var feedModel = FeedModel()
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject var feedModel = FeedModel() // Already @MainActor
+    
+    init() {
+        registerBackgroundTasks()
+    }
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView() // ContentView will call feedModel.fetchSourcesAsync()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 .environmentObject(feedModel)
         }
-        .onChange(of: scenePhase, perform: { scene in
-            if scene == .background {
-                print("background")
-                appDelegate.feedModel = feedModel
-                appDelegate.scheduleAppRefresh()
-                //appDelegate.scheduleAppComputing()
+        .onChange(of: scenePhase, perform: { newScenePhase in
+            if newScenePhase == .background {
+                print("App moved to background, scheduling refresh task.")
+                scheduleAppRefresh()
             }
         })
     }
-}
-
-
-class AppDelegate: NSObject, UIApplicationDelegate {
     
-    var feedModel: FeedModel?
-    
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        print("Registering")
-        
+    func registerBackgroundTasks() {
+        print("Registering background tasks")
         BGTaskScheduler.shared.register(forTaskWithIdentifier: "com.jfuentes.MasterFeed.refresh", using: nil) { task in
-            self.handleRefresh(task: task as! BGAppRefreshTask)
+            // Ensure task is an BGAppRefreshTask
+            guard let refreshTask = task as? BGAppRefreshTask else {
+                print("Wrong task type registered or received.")
+                task.setTaskCompleted(success: false)
+                return
+            }
+            
+            print("Handling background refresh task.")
+            self.handleRefresh(task: refreshTask)
         }
-        
-//        BGTaskScheduler.shared.register(forTaskWithIdentifier: "com.jfuentes.MasterFeed.sort", using: nil) { task in
-//            self.handleComputing(task: task as! BGProcessingTask)
-//        }
-        
-        return true
     }
     
-    
     func scheduleAppRefresh() {
-        
         let request = BGAppRefreshTaskRequest(identifier: "com.jfuentes.MasterFeed.refresh")
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 5 * 60) // Fetch no earlier than 15 minutes from now
+        request.earliestBeginDate = Date(timeIntervalSinceNow: FeedModel.refreshTime) // Use refreshTime from FeedModel
         do {
             try BGTaskScheduler.shared.submit(request)
-            print("Scheduled refresh")
+            print("Background refresh task scheduled.")
         } catch {
             print("Could not schedule app refresh: \(error)")
         }
     }
     
-//    func scheduleAppComputing() {
-//        let request = BGAppRefreshTaskRequest(identifier: "com.jfuentes.MasterFeed.sort")
-//        request.earliestBeginDate = Date(timeIntervalSinceNow: 5 * 60) // Fetch no earlier than 15 minutes from now
-//        do {
-//            try BGTaskScheduler.shared.submit(request)
-//        } catch {
-//            print("Could not schedule app refresh: \(error)")
-//        }
-//    }
-    
-    
+    // Async handler for the background task
     func handleRefresh(task: BGAppRefreshTask) {
+        // Schedule the next refresh task
         scheduleAppRefresh()
-        guard  let feedModel = feedModel else {
-            return
+        
+        let operationQueue = OperationQueue()
+        operationQueue.maxConcurrentOperationCount = 1
+        
+        // Task expiration handler
+        task.expirationHandler = {
+            operationQueue.cancelAllOperations()
+            // Mark the task as completed with failure if it expires
+            // This might happen if the async work takes too long
+            print("Background task expired.")
+            task.setTaskCompleted(success: false) 
+        }
+
+        // Perform the refresh operation asynchronously
+        print("Starting background fetchSourcesAsync.")
+        
+        // Create a new Task to run the async function
+        let refreshOperation = Task {
+            do {
+                try await feedModel.fetchSourcesAsync()
+                if !Task.isCancelled {
+                    print("Background refresh task completed successfully.")
+                    task.setTaskCompleted(success: true)
+                } else {
+                    print("Background refresh task was cancelled.")
+                    task.setTaskCompleted(success: false)
+                }
+            } catch {
+                print("Background refresh task failed with error: \(error)")
+                task.setTaskCompleted(success: false)
+            }
         }
         
-        feedModel.fetchSources()
+        // Add a way to cancel the Task if the BGTask itself is cancelled (e.g. by expirationHandler)
+        // However, direct cancellation of a Swift Task from outside is complex.
+        // The expirationHandler should setTaskCompleted.
+        // We rely on fetchSourcesAsync to respect Task.isCancelled internally if it's a long operation.
+        _ = refreshOperation // Keep a reference if needed, or manage cancellation
     }
-    
-//    func handleComputing(task: BGProcessingTask) {
-//
-//    }
 }

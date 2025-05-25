@@ -13,30 +13,30 @@ struct AppTabView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            NavigationView {
+            NavigationStack {
                 MainFeedView().navigationBarHidden(true)
-            }.navigationViewStyle(StackNavigationViewStyle()) // Use .stack in io15
+            }
             .tabItem { Label("News", systemImage: "newspaper.fill")
                 .accessibility(label: Text("News")) }
             .tag(Tabs.main)
             
-            NavigationView {
+            NavigationStack {
                 CategoriesView()
-            }.navigationViewStyle(StackNavigationViewStyle()) // Use .stack in io15
+            }
             .tabItem { Label("Categories", systemImage: "books.vertical.fill")
                 .accessibility(label: Text("Categories")) }
             .tag(Tabs.categories)
             
-            NavigationView {
+            NavigationStack {
                 BookmarksView()
-            }.navigationViewStyle(StackNavigationViewStyle()) //TODO: deprecated ios 15
+            }
             .tabItem { Label("Bookmarks", systemImage: "book.fill")
                 .accessibility(label: Text("Bookmarks")) }
             .tag(Tabs.bookmarks)
             
-            NavigationView {
+            NavigationStack {
                 AccountView()
-            }.navigationViewStyle(StackNavigationViewStyle()) //TODO: deprecated ios 15
+            }
             .tabItem { Label("Account", systemImage: "person.fill")
                 .accessibility(label: Text("Account"))  }
             .tag(Tabs.account)

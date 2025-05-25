@@ -53,16 +53,21 @@ struct AccountView: View {
                     showAlert = true
                 }, label: {
                     Text("Logout").foregroundColor(.red)
-                }).actionSheet(isPresented: $showAlert) {
-                    ActionSheet(
-                        title: Text("Remove Credentials From Device"),
-                        message: Text("Are you sure?"),
-                        buttons: [
-                            .cancel(),
-                            .destructive(Text("Delete"),
-                                         action: {withAnimation { feedModel.logoutUser() }})
-                        ]
-                    )
+                })
+                // MODIFIED HERE: actionSheet to confirmationDialog
+                .confirmationDialog(
+                    Text("Remove Credentials From Device"), // Title
+                    isPresented: $showAlert,
+                    titleVisibility: .visible
+                ) {
+                    Button("Delete", role: .destructive) {
+                        withAnimation { feedModel.logoutUser() }
+                    }
+                    Button("Cancel", role: .cancel) {
+                        // Default cancel action dismisses the dialog
+                    }
+                } message: {
+                    Text("Are you sure?") // Message
                 }
             }
         }
@@ -72,7 +77,8 @@ struct AccountView: View {
 
 struct AccountView_Previews: PreviewProvider {
     static var previews: some View {
-        AccountView().environmentObject(FeedModel.sampleSubs())
+        NavigationStack {
+            AccountView().environmentObject(FeedModel.sampleSubs())
+        }
     }
 }
-

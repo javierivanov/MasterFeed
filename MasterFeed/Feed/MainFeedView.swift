@@ -8,7 +8,6 @@
 //import SwiftUI
 //import UIKit
 //import UnsupervisedTextClassifier
-//import SwiftUIX
 //
 //
 //struct MainFeedView: View {
@@ -27,7 +26,7 @@
 //    }
 //    var category: String = "Latest"
 //    
-//    @Environment(\.safeAreaInsets) var safeAreaInsets
+//    @Environment(\.safeAreaInsets) var safeAreaInsets // This should remain
 //    
 //    
 //    var body: some View {
@@ -36,29 +35,22 @@
 //            if feedModel.state == .fetchingFeeds {
 //                ProgressView("Refreshing").frame(maxWidth: .infinity, alignment: .center)
 //            } else {
-//                CocoaList(feedModel.filterSegments(for: category), rowContent: { segment in
+//                List(feedModel.filterSegments(for: category)) { segment in
 //                    ExtractedView(resultGroup: segment.resultGroup, tokens: segment.tokens, url: $url, isPresented: $isPresentedWebView).frame(maxWidth: 700)
-//                }).listSeparatorStyle(.none)
+//                }.listSeparatorStyle(.none)
 //            }
 //        }
-//
-//        
 //        .environment(\.categoryValue, category)
 //        .navigationTitle(category)
-//        .background(Group {
-//            if let url = url {
-//                NavigationLink(
-//                    destination: SafariWebView(url: url, presented: $isPresentedWebView, readerMode: feedModel.defaultEasyReading)
-//                        .ignoresSafeArea()
-//                        .navigationBarHidden(true),
-//                    isActive: $isPresentedWebView,
-//                    label: {
-//                        EmptyView()
-//                    })
+//        .navigationDestination(isPresented: $isPresentedWebView) {
+//            if let validURL = url {
+//                SafariWebView(url: validURL, presented: $isPresentedWebView, readerMode: feedModel.defaultEasyReading)
+//                    .ignoresSafeArea()
+//                    .navigationBarHidden(true)
 //            } else {
-//                EmptyView()
+//                EmptyView() 
 //            }
-//        })
+//        }
 //        
 ////        .sheet(isPresented: $isPresentedWebView, content: {
 ////            SafariView(url: $url)
@@ -68,7 +60,7 @@
 //
 //struct MainFeedView_Previews: PreviewProvider {
 //    static var previews: some View {
-//        NavigationView {
+//        NavigationStack { 
 //            MainFeedView().environmentObject(FeedModel.sampleSubs())
 //        }
 //    }
@@ -94,7 +86,7 @@
 //                        .bold()
 //                        .font(.title2)
 //                        .padding(3)
-//                        .backgroundFill(.accentColor)
+//                        .background(.accent) 
 //                        .foregroundColor(.systemBackground)
 //                        .cornerRadius(5)
 //                    
@@ -104,7 +96,7 @@
 //                        .bold()
 //                        .font(.title2)
 //                        .padding(3)
-//                        .backgroundFill(.accentColor)
+//                        .background(.accent) 
 //                        .foregroundColor(.systemBackground)
 //                        .cornerRadius(5)
 //                    
@@ -117,14 +109,6 @@
 //
 //            } else if resultGroup.count == 1 {
 //                
-////                NavigationLink(
-////                    destination: SafariWebView(url: ((resultGroup.first!.article as? Tweet)?.url!)!, presented: $selection).ignoresSafeArea().navigationBarHidden(true),
-////                    tag: ((resultGroup.first!.article as? Tweet)?.url!.absoluteString)!,
-////                    selection: $selection,
-////                    label: {
-////                        HorizontalCardView(tweet: resultGroup.first!.article as? Tweet)
-////                    }).contextMenu {ContextMenuView(tweet: resultGroup.first!.article as? Tweet)}
-//                
 //                Button(action: {
 //                    url = (resultGroup.first!.article as? Tweet)?.url
 //                    isPresented = true
@@ -134,42 +118,16 @@
 //                .contextMenu {ContextMenuView(tweet: resultGroup.first!.article as? Tweet)}
 //                .padding(.horizontal, UIDevice.current.userInterfaceIdiom == .pad ? 40 : 0)
 //
-//                
-//    //            Button(action: {
-//    //                isPresented = true
-//    //                url = (resultGroup.first!.article as! Tweet).url
-//    //            }, label: {
-////                    SmallCardViewTopic(resultGroup: resultGroup.first!, url: $url, isPresented: $isPresented)//.contextMenu(menuItems: {ContextMenusView(tweet: resultGroup.first!.article as! Tweet)})
-////                        .frame(height: 300)
-//    //            })
 //            }
-////            else {
-////                EmptyView()
-////            }
 //        }
-////        .background(Rectangle().foregroundColor(.secondarySystemBackground).cornerRadius(10)).padding(10)
 //    }
 //}
 //
-//private struct SafeAreaInsetsKey: EnvironmentKey {
-//    static var defaultValue: EdgeInsets {
-//        (UIApplication.shared.windows.first(where: { $0.isKeyWindow })?.safeAreaInsets ?? .zero).insets
-//    }
-//}
+//// Removed SafeAreaInsetsKey struct
 //
-//extension EnvironmentValues {
-//    
-//    var safeAreaInsets: EdgeInsets {
-//        self[SafeAreaInsetsKey.self]
-//    }
-//}
+//// Removed EnvironmentValues extension for safeAreaInsets
 //
-//private extension UIEdgeInsets {
-//    
-//    var insets: EdgeInsets {
-//        EdgeInsets(top: top, leading: left, bottom: bottom, trailing: right)
-//    }
-//}
+//// Removed UIEdgeInsets extension for insets
 //
 //
 //struct CategoryValueKey: EnvironmentKey {
